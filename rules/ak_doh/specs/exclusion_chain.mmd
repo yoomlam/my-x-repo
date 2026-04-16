@@ -1,0 +1,29 @@
+graph TD
+  Earnings_gross_earned_income(["Earnings.gross_earned_income<br/>money"])
+  Earnings_federal_exclusions(["Earnings.federal_exclusions<br/>money"])
+  Earnings_eitc_exclusion(["Earnings.eitc_exclusion<br/>money"])
+  Earnings_irregular_earned_income(["Earnings.irregular_earned_income<br/>money"])
+  Earnings_student_earned_income(["Earnings.student_earned_income<br/>money"])
+  Earnings_student_monthly_limit(["Earnings.student_monthly_limit<br/>money"])
+  Earnings_non_needs_based_unearned_remainder(["Earnings.non_needs_based_unearned_remainder<br/>money"])
+  Earnings_impairment_work_expenses(["Earnings.impairment_work_expenses<br/>money"])
+  Earnings_blind_work_expenses(["Earnings.blind_work_expenses<br/>money"])
+  Earnings_self_support_exclusion(["Earnings.self_support_exclusion<br/>money"])
+  after_federal["after_federal<br/>money"]
+  after_eitc["after_eitc<br/>money"]
+  after_irregular["after_irregular<br/>money"]
+  after_student["after_student<br/>money"]
+  after_general_20["after_general_20<br/>money"]
+  after_65["after_65<br/>money"]
+  after_irwe["after_irwe<br/>money"]
+  after_half["after_half<br/>money"]
+  after_blind["after_blind<br/>money"]
+  AK_EXCL_ALLOW_001{{"AK-EXCL-ALLOW-001<br/>allow"}}
+  after_federal --> after_eitc
+  after_eitc --> after_irregular
+  after_irregular --> after_student
+  after_student --> after_general_20
+  after_general_20 --> after_65
+  after_65 --> after_irwe
+  after_irwe --> after_half
+  after_half --> after_blind

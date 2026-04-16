@@ -1,0 +1,230 @@
+> Module Exclusion_chain
+
+# Exclusion_chain
+
+10-step sequential earned income exclusion chain per APA 442-4. Takes gross earned income and all applicable exclusion inputs; returns adjusted_earned_income after applying exclusions in mandatory policy order.
+
+Module: `Exclusion_chain` | Version: `2026Q1` | Effective: 2026-01-01 | Jurisdiction: State (US, AK)
+
+DO NOT EDIT — regenerate with: `python tools/transpile_to_catala.py ak_doh/specs/exclusion_chain.civil.yaml ak_doh/output/exclusion_chain.catala_en --scope ExclusionChainDecision`
+
+## Declarations
+
+#### gross_earned_income
+
+Gross earned income before any exclusions
+
+*Source: 442-2 EARNED INCOME EXCLUSIONS*
+
+#### federal_exclusions
+
+Total income excluded by federal law applicable to earned income (ANCSA cash distributions, WWII restitution, volunteer payments, etc.) — pre-aggregated from 442-3A list
+
+*Source: 442-2A — Earned Income Exclusions Authorized by Federal Laws*
+
+#### eitc_exclusion
+
+EITC advance or Child Tax Credit payment received (payroll advance or tax refund)
+
+*Source: 442-2B — Earned Income Tax Credit and Child Tax Credit Payments*
+
+#### irregular_earned_income
+
+Infrequent or irregular earned income received this calendar quarter (amount subject to exclusion; up to $30 is excludable per 442-1A/442-2C)
+
+*Source: 442-1A — Infrequent/Irregular Income; 442-2C — Infrequent/Irregular Earned Income*
+
+#### student_earned_income
+
+Earned income of a blind or disabled student under age 22 attending school at least the required weekly hours
+
+*Source: 442-2D — Student Earned Income Exclusion*
+
+#### student_monthly_limit
+
+Monthly maximum for student earned income exclusion (Addendum 1, indexed annually; e.g. $2,410 for 2026)
+
+*Source: Addendum 1 PROGRAM STANDARDS — Student Earned Income Exclusion*
+
+#### non_needs_based_unearned_remainder
+
+Unused portion of the $20/month general income exclusion after applying it to non-needs-based unearned income in the same month; applied to earned income in step 5
+
+*Source: 442-1B — $20 Per Month General Income Exclusion; 442-2E — $20 Per Month General Income Exclusion*
+
+#### impairment_work_expenses
+
+Verified impairment-related work expenses paid by a disabled individual (or over-65 former SSI/APA recipient) necessary and directly related to their impairment to enable work
+
+*Source: 442-2G — Impairment Related Work Expenses for Disabled*
+
+#### blind_work_expenses
+
+Verified work expenses of a blind individual; any work expense qualifies, whether or not directly related to blindness (broader than IRWE)
+
+*Source: 442-2I — Work Expenses for the Blind*
+
+#### self_support_exclusion
+
+Earned income used to fulfill an SSA- or DVR-approved plan for achieving self-support (amount specified in the approved plan)
+
+*Source: 442-1C — Amount to Fulfill a Plan for Achieving Self-Support*
+
+```catala-metadata
+declaration scope ExclusionChainDecision:
+  input gross_earned_income content money
+  input federal_exclusions content money  # optional
+  input eitc_exclusion content money  # optional
+  input irregular_earned_income content money  # optional
+  input student_earned_income content money  # optional
+  input student_monthly_limit content money  # optional
+  input non_needs_based_unearned_remainder content money  # optional
+  input impairment_work_expenses content money  # optional
+  input blind_work_expenses content money  # optional
+  input self_support_exclusion content money  # optional
+  internal after_federal content money
+  internal after_eitc content money
+  internal after_irregular content money
+  internal after_student content money
+  internal after_general_20 content money
+  # ── Computed outputs ──
+  output after_65 content money
+  output after_irwe content money
+  output after_half content money
+  output after_blind content money
+  # ── Decisions ──
+  output adjusted_earned_income content money
+```
+
+## Computed Values
+
+#### after_federal
+
+Step 1: Gross earned income minus federal-law-authorized exclusions (442-3A list)
+
+*Source: 442-2A — Earned Income Exclusions Authorized by Federal Laws; 442-4 step 1*
+
+```catala
+scope ExclusionChainDecision:
+  definition after_federal equals
+    gross_earned_income - federal_exclusions
+
+```
+
+#### after_eitc
+
+Step 2: After removing EITC advance or Child Tax Credit refund from gross
+
+*Source: 442-2B — Earned Income Tax Credit and Child Tax Credit Payments; 442-4 step 2*
+
+```catala
+scope ExclusionChainDecision:
+  definition after_eitc equals
+    after_federal - eitc_exclusion
+
+```
+
+#### after_irregular
+
+Step 3: After excluding up to $10/month of infrequent or irregular earned income ($30/quarter converted to monthly)
+
+*Source: 442-1A — Infrequent/Irregular Income; 442-2C — Infrequent/Irregular Earned Income; 442-4 step 3*
+
+```catala
+scope ExclusionChainDecision:
+  definition after_irregular equals
+    after_eitc - (if irregular_earned_income <= $10 then irregular_earned_income else $10)
+
+```
+
+#### after_student
+
+Step 4: After excluding blind/disabled student earned income up to the monthly Addendum 1 limit
+
+*Source: 442-2D — Student Earned Income Exclusion; 442-4 step 4*
+
+```catala
+scope ExclusionChainDecision:
+  definition after_student equals
+    after_irregular - (if student_earned_income <= student_monthly_limit then student_earned_income else student_monthly_limit)
+
+```
+
+#### after_general_20
+
+Step 5: After applying any unused $20/month general income exclusion remainder to earned income
+
+*Source: 442-1B — $20 Per Month General Income Exclusion; 442-2E; 442-4 step 5*
+
+```catala
+scope ExclusionChainDecision:
+  definition after_general_20 equals
+    after_student - (if non_needs_based_unearned_remainder <= $20 then non_needs_based_unearned_remainder else $20)
+
+```
+
+#### after_65
+
+Step 6: After excluding the first $65 of remaining earned income
+
+*Source: 442-2F — $65 Earned Income Exclusion; 442-4 step 6*
+
+```catala
+scope ExclusionChainDecision:
+  definition after_65 equals
+    after_general_20 - (if after_general_20 <= $65 then after_general_20 else $65)
+
+```
+
+#### after_irwe
+
+Step 7: After subtracting verified impairment-related work expenses for disabled individuals
+
+*Source: 442-2G — Impairment Related Work Expenses for Disabled; 442-4 step 7*
+
+```catala
+scope ExclusionChainDecision:
+  definition after_irwe equals
+    after_65 - impairment_work_expenses
+
+```
+
+#### after_half
+
+Step 8: One-half of remaining earned income is excluded (result = 50% of after_irwe)
+
+*Source: 442-2H — One-Half of Remaining Earned Income; 442-4 step 8*
+
+```catala
+scope ExclusionChainDecision:
+  definition after_half equals
+    after_irwe * 0.5
+
+```
+
+#### after_blind
+
+Step 9: After subtracting verified work expenses of a blind individual
+
+*Source: 442-2I — Work Expenses for the Blind; 442-4 step 9*
+
+```catala
+scope ExclusionChainDecision:
+  definition after_blind equals
+    after_half - blind_work_expenses
+
+```
+
+## Decision
+
+#### adjusted_earned_income
+
+Final adjusted earned income after all 10 exclusion steps in mandatory 442-4 order (step 10: self-support plan exclusion)
+
+```catala
+scope ExclusionChainDecision:
+  definition adjusted_earned_income equals
+    after_blind - self_support_exclusion
+
+```
+

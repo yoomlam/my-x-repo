@@ -1,0 +1,84 @@
+> Using Eligibility
+
+# Tests: Eligibility derived tests inferred from 523B policy example in extracted-tests.yaml — 2026-03-27
+
+## Test: drv_001 — A1E 2025: client adjusted $1,707.50 below standard; DOL adjusted $1,879 just outside 10% band (upper=1878.25) — manual verification required
+
+```catala
+#[test]
+declaration scope TestDrv001:
+  result scope Eligibility.EligibilityDecision
+
+scope TestDrv001:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $3,500
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A1E
+    -- benefit_year: 2025
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $11,529
+    -- gross_earned_income: $3,843
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = ManualVerification)
+  assertion (result.reasons = [])
+```
+
+## Test: drv_002 — A1E 2025: client adjusted income exactly $1,795 = income limit; DOL same — approve (≤ limit passes)
+
+```catala
+#[test]
+declaration scope TestDrv002:
+  result scope Eligibility.EligibilityDecision
+
+scope TestDrv002:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $3,675
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A1E
+    -- benefit_year: 2025
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $11,025
+    -- gross_earned_income: $3,675
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = Approve)
+  assertion (result.reasons = [])
+```
+

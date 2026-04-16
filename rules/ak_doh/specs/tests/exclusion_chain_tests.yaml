@@ -1,0 +1,208 @@
+test_suite:
+  spec: "exclusion_chain.civil.yaml"
+  description: "Unit tests for the 10-step earned income exclusion chain (APA 442-4). Each case isolates one or more exclusion steps. All monetary inputs in dollars per month."
+  version: "1.0"
+
+# =============================================================================
+# Exclusion chain steps (442-4 order):
+#   1. after_federal   = gross - federal_exclusions
+#   2. after_eitc      = after_federal - eitc_exclusion
+#   3. after_irregular = after_eitc - min(irregular_earned_income, 10)
+#   4. after_student   = after_irregular - min(student_earned_income, student_monthly_limit)
+#   5. after_general_20 = after_student - min(non_needs_based_unearned_remainder, 20)
+#   6. after_65        = after_general_20 - min(after_general_20, 65)
+#   7. after_irwe      = after_65 - impairment_work_expenses
+#   8. after_half      = after_irwe × 0.5
+#   9. after_blind     = after_half - blind_work_expenses
+#  10. adjusted_earned_income = after_blind - self_support_exclusion
+#
+# Note: all optional fields default to 0 when omitted.
+# student_monthly_limit (Addendum 1, 2026): $2,410/month
+# =============================================================================
+
+tests:
+
+  # ---------------------------------------------------------------------------
+  # Case: simple_chain_001 — Steps 5, 6, 8 only (typical case: $20 + $65 + half)
+  # 2000 → -20 (step 5) → 1980 → -65 (step 6) → 1915 → ×0.5 (step 8) → 957.50
+  # ---------------------------------------------------------------------------
+  - case_id: "simple_chain_001"
+    description: "Basic chain: $20 general + $65 earned exclusions then one-half. Result: (2000 - 20 - 65) × 0.5 = 957.50"
+    inputs:
+      gross_earned_income: 2000
+      non_needs_based_unearned_remainder: 20
+    expected:
+      adjusted_earned_income: 957.50
+    tags: ["allow", "steps_5_6_8"]
+
+  # ---------------------------------------------------------------------------
+  # Case: irwe_001 — IRWE at step 7 reduces income before the one-half split
+  # 3000 → -20 → 2980 → -65 → 2915 → -400 (irwe) → 2515 → ×0.5 → 1257.50
+  # ---------------------------------------------------------------------------
+  - case_id: "irwe_001"
+    description: "IRWE ($400) at step 7: income after ×0.5 = (3000 - 20 - 65 - 400) × 0.5 = 1257.50"
+    inputs:
+      gross_earned_income: 3000
+      impairment_work_expenses: 400
+      non_needs_based_unearned_remainder: 20
+    expected:
+      adjusted_earned_income: 1257.50
+    tags: ["allow", "irwe", "step_7"]
+
+  # ---------------------------------------------------------------------------
+  # Case: student_001 — Student earned income exclusion at step 4
+  # 3000 → -500 (student, ≤ $2,410 limit) → 2500 → -20 → 2480 → -65 → 2415 → ×0.5 → 1207.50
+  # ---------------------------------------------------------------------------
+  - case_id: "student_001"
+    description: "Student earned income exclusion ($500 ≤ $2,410 monthly limit): income reduced by $500 before standard exclusions. Result: (3000 - 500 - 20 - 65) × 0.5 = 1207.50"
+    inputs:
+      gross_earned_income: 3000
+      student_earned_income: 500
+      student_monthly_limit: 2410
+      non_needs_based_unearned_remainder: 20
+    expected:
+      adjusted_earned_income: 1207.50
+    tags: ["allow", "student", "step_4"]
+
+  # ---------------------------------------------------------------------------
+  # Case: student_cap_001 — Student income exceeds monthly limit; cap applies
+  # student_earned_income = 3000, monthly_limit = 2410 → exclusion capped at 2410
+  # 5000 → -2410 (capped) → 2590 → -20 → 2570 → -65 → 2505 → ×0.5 → 1252.50
+  # ---------------------------------------------------------------------------
+  - case_id: "student_cap_001"
+    description: "Student income ($3,000) exceeds monthly cap ($2,410); only $2,410 excluded. Result: (5000 - 2410 - 20 - 65) × 0.5 = 1252.50"
+    inputs:
+      gross_earned_income: 5000
+      student_earned_income: 3000
+      student_monthly_limit: 2410
+      non_needs_based_unearned_remainder: 20
+    expected:
+      adjusted_earned_income: 1252.50
+    tags: ["allow", "student", "monthly_cap", "step_4"]
+
+  # ---------------------------------------------------------------------------
+  # Case: blind_work_001 — Blind work expenses at step 9 (post-half)
+  # 2000 → -20 → 1980 → -65 → 1915 → ×0.5 → 957.50 → -200 (blind) → 757.50
+  # ---------------------------------------------------------------------------
+  - case_id: "blind_work_001"
+    description: "Blind work expenses ($200) applied after the one-half exclusion (step 9). Result: (2000 - 20 - 65) × 0.5 - 200 = 757.50"
+    inputs:
+      gross_earned_income: 2000
+      blind_work_expenses: 200
+      non_needs_based_unearned_remainder: 20
+    expected:
+      adjusted_earned_income: 757.50
+    tags: ["allow", "blind_work_expenses", "step_9"]
+
+  # ---------------------------------------------------------------------------
+  # Case: self_support_001 — Self-support plan exclusion at step 10 (last)
+  # 2000 → -20 → 1980 → -65 → 1915 → ×0.5 → 957.50 → -300 (self-support) → 657.50
+  # ---------------------------------------------------------------------------
+  - case_id: "self_support_001"
+    description: "Self-support plan exclusion ($300) applied last (step 10). Result: (2000 - 20 - 65) × 0.5 - 300 = 657.50"
+    inputs:
+      gross_earned_income: 2000
+      self_support_exclusion: 300
+      non_needs_based_unearned_remainder: 20
+    expected:
+      adjusted_earned_income: 657.50
+    tags: ["allow", "self_support", "step_10"]
+
+  # ---------------------------------------------------------------------------
+  # Case: full_chain_001 — All 10 steps applied
+  # Step 1: 5000 - 100 (federal) = 4900
+  # Step 2: 4900 - 200 (eitc)    = 4700
+  # Step 3: 4700 - min(10, 10)   = 4690
+  # Step 4: 4690 - min(300, 2410) = 4390
+  # Step 5: 4390 - min(20, 20)   = 4370
+  # Step 6: 4370 - min(4370, 65) = 4305
+  # Step 7: 4305 - 100 (irwe)    = 4205
+  # Step 8: 4205 × 0.5           = 2102.50
+  # Step 9: 2102.50 - 50 (blind) = 2052.50
+  # Step 10: 2052.50 - 75        = 1977.50
+  # ---------------------------------------------------------------------------
+  - case_id: "full_chain_001"
+    description: "All 10 exclusion steps applied: federal ($100), EITC ($200), irregular ($10), student ($300), $20 general, $65 earned, IRWE ($100), one-half, blind work ($50), self-support ($75). Result: 1977.50"
+    inputs:
+      gross_earned_income: 5000
+      federal_exclusions: 100
+      eitc_exclusion: 200
+      irregular_earned_income: 10
+      student_earned_income: 300
+      student_monthly_limit: 2410
+      non_needs_based_unearned_remainder: 20
+      impairment_work_expenses: 100
+      blind_work_expenses: 50
+      self_support_exclusion: 75
+    expected:
+      adjusted_earned_income: 1977.50
+    tags: ["allow", "full_chain", "all_steps"]
+
+  # ---------------------------------------------------------------------------
+  # Case: irregular_cap_001 — Irregular income cap: only $10/month excluded
+  # 15 is given but only min(15, 10) = 10 is excluded (monthly cap = $10, i.e. $30/quarter)
+  # 1000 → -0 (federal) → -0 (eitc) → -10 (irreg cap) → -0 (student) → -20 → -65 → ×0.5
+  # = (1000 - 10 - 20 - 65) × 0.5 = 905 × 0.5 = 452.50
+  # ---------------------------------------------------------------------------
+  - case_id: "irregular_cap_001"
+    description: "Irregular earned income $15 given but monthly exclusion capped at $10. Result: (1000 - 10 - 20 - 65) × 0.5 = 452.50"
+    inputs:
+      gross_earned_income: 1000
+      irregular_earned_income: 15
+      non_needs_based_unearned_remainder: 20
+    expected:
+      adjusted_earned_income: 452.50
+    tags: ["allow", "irregular_income", "monthly_cap", "step_3"]
+
+  # ---------------------------------------------------------------------------
+  # Case: partial_general_20_001 — Only a portion of the $20 exclusion remains
+  # (e.g., $12 already applied to unearned income; $8 remains for earned)
+  # 1000 → -8 (min(8, 20)) → 992 → -65 → 927 → ×0.5 → 463.50
+  # ---------------------------------------------------------------------------
+  - case_id: "partial_general_20_001"
+    description: "$8 of $20 general exclusion unused (remaining after unearned application): only $8 excluded at step 5. Result: (1000 - 8 - 65) × 0.5 = 463.50"
+    inputs:
+      gross_earned_income: 1000
+      non_needs_based_unearned_remainder: 8
+    expected:
+      adjusted_earned_income: 463.50
+    tags: ["allow", "partial_general_exclusion", "step_5"]
+
+  # ---------------------------------------------------------------------------
+  # Case: no_general_exclusion_001 — Full $20 already used on unearned income; none remains for earned
+  # non_needs_based_unearned_remainder omitted (defaults to 0)
+  # 2000 → -0 (step 5) → 2000 → -65 (step 6) → 1935 → ×0.5 (step 8) → 967.50
+  # ---------------------------------------------------------------------------
+  - case_id: "no_general_exclusion_001"
+    description: "No general $20 exclusion carried to earned income (all used on unearned). Result: (2000 - 65) × 0.5 = 967.50"
+    inputs:
+      gross_earned_income: 2000
+    expected:
+      adjusted_earned_income: 967.50
+    tags: ["allow", "step_5", "no_general_exclusion"]
+
+  # ---------------------------------------------------------------------------
+  # Case: edge_sub_65_001 — Income after step 5 is less than $65; step 6 clamps to zero
+  # gross = 50, no optional inputs
+  # Step 5: 50 - 0 = 50
+  # Step 6: 50 - min(50, 65) = 0  (clamped because 50 < 65)
+  # Step 8: 0 × 0.5 = 0
+  # ---------------------------------------------------------------------------
+  - case_id: "edge_sub_65_001"
+    description: "Income ($50) below $65 after step 5: step 6 excludes the full amount (min clamp), result = 0"
+    inputs:
+      gross_earned_income: 50
+    expected:
+      adjusted_earned_income: 0
+    tags: ["allow", "boundary", "step_6", "below_65"]
+
+  # ---------------------------------------------------------------------------
+  # Case: edge_zero_income_001 — Zero gross income; all steps produce zero
+  # ---------------------------------------------------------------------------
+  - case_id: "edge_zero_income_001"
+    description: "Zero gross earned income: all exclusion steps produce $0 — adjusted income = $0"
+    inputs:
+      gross_earned_income: 0
+    expected:
+      adjusted_earned_income: 0
+    tags: ["allow", "edge", "zero_income"]

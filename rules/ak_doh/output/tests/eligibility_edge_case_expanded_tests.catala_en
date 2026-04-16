@@ -1,0 +1,204 @@
+> Using Eligibility
+
+# Tests: Edge case expanded tests — generated 2026-03-27
+
+## Test: edg_001 — Zero gross income (client and DOL): exclusion chain clamps to $0; $0 ≤ $1,845 limit — approve
+
+```catala
+#[test]
+declaration scope TestEdg001:
+  result scope Eligibility.EligibilityDecision
+
+scope TestEdg001:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $0
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A1E
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $0
+    -- gross_earned_income: $0
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = Approve)
+  assertion (result.reasons = [])
+```
+
+## Test: edg_002 — Extreme income — 10× highest limit: client and DOL adjusted $27,320 (A2S 2026 limit=$2,732) — deny (both above standard)
+
+```catala
+#[test]
+declaration scope TestEdg002:
+  result scope Eligibility.EligibilityDecision
+
+scope TestEdg002:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $54,725
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A2S
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $164,175
+    -- gross_earned_income: $54,725
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = Deny)
+  assertion (result.reasons = [ IncomeExceedsStandardBoth ])
+```
+
+## Test: edg_003 — H1E household type (H-type single, 2026): adjusted $957.50 below $1,845 limit — approve. Covers H-type table lookup.
+
+```catala
+#[test]
+declaration scope TestEdg003:
+  result scope Eligibility.EligibilityDecision
+
+scope TestEdg003:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $2,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: H1E
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $6,000
+    -- gross_earned_income: $2,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = Approve)
+  assertion (result.reasons = [])
+```
+
+## Test: edg_004 — NHR household type (2026): adjusted $957.50 below $1,845 limit — approve. Covers NHR table lookup.
+
+```catala
+#[test]
+declaration scope TestEdg004:
+  result scope Eligibility.EligibilityDecision
+
+scope TestEdg004:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $2,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: NHR
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $6,000
+    -- gross_earned_income: $2,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = Approve)
+  assertion (result.reasons = [])
+```
+
+## Test: edg_005 — All 10 exclusion steps applied: federal ($100), EITC ($50), irregular ($10), student ($200), $20 general, $65 earned, IRWE ($300), one-half, blind work ($200), self-support ($100). Client and DOL adjusted $1,827.50 ≤ $1,845 — approve
+
+```catala
+#[test]
+declaration scope TestEdg005:
+  result scope Eligibility.EligibilityDecision
+
+scope TestEdg005:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $5,000
+    -- federal_exclusions: $100
+    -- eitc_exclusion: $50
+    -- irregular_earned_income: $10
+    -- student_earned_income: $200
+    -- student_monthly_limit: $2,410
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $300
+    -- blind_work_expenses: $200
+    -- self_support_exclusion: $100
+    -- household_type: A1E
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $15,000
+    -- gross_earned_income: $5,000
+    -- federal_exclusions: $100
+    -- eitc_exclusion: $50
+    -- irregular_earned_income: $10
+    -- student_earned_income: $200
+    -- student_monthly_limit: $2,410
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $300
+    -- blind_work_expenses: $200
+    -- self_support_exclusion: $100
+  }
+  assertion (result.eligible = Approve)
+  assertion (result.reasons = [])
+```
+

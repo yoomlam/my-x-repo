@@ -1,0 +1,46 @@
+> Using Exclusion_chain
+
+# Tests: Exclusion chain derived tests inferred from 523B policy example in extracted-tests.yaml — 2026-03-27
+
+## Test: drv_001 — 523B example — client gross $3,500 with $20 general exclusion: (3500 - 20 - 65) × 0.5 = $1,707.50
+
+```catala
+#[test]
+declaration scope TestDrv001:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestDrv001:
+  definition result.gross_earned_income equals $3,500
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $0
+  definition result.student_earned_income equals $0
+  definition result.student_monthly_limit equals $0
+  definition result.non_needs_based_unearned_remainder equals $20
+  definition result.impairment_work_expenses equals $0
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $1,707.50)
+```
+
+## Test: drv_002 — 523B example — DOL avg monthly gross $3,733.33 (=$11,200/3) with $20 general exclusion: (3733.33 - 20 - 65) × 0.5 = $1,824.165
+
+```catala
+#[test]
+declaration scope TestDrv002:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestDrv002:
+  definition result.gross_earned_income equals $3,733.33
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $0
+  definition result.student_earned_income equals $0
+  definition result.student_monthly_limit equals $0
+  definition result.non_needs_based_unearned_remainder equals $20
+  definition result.impairment_work_expenses equals $0
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $1,824.17)
+```
+

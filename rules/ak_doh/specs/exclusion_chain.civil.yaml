@@ -1,0 +1,233 @@
+module: "exclusion_chain"
+description: "10-step sequential earned income exclusion chain per APA 442-4. Takes gross earned income and all applicable exclusion inputs; returns adjusted_earned_income after applying exclusions in mandatory policy order."
+version: "2026Q1"
+jurisdiction:
+  level: state
+  country: US
+  state: AK
+effective:
+  start: 2026-01-01
+
+facts:
+  Earnings:
+    description: "Gross earned income and all applicable exclusion inputs for one income source"
+    fields:
+      gross_earned_income:
+        type: money
+        currency: USD
+        description: "Gross earned income before any exclusions"
+        source: "442-2 EARNED INCOME EXCLUSIONS"
+      federal_exclusions:
+        type: money
+        currency: USD
+        description: "Total income excluded by federal law applicable to earned income (ANCSA cash distributions, WWII restitution, volunteer payments, etc.) — pre-aggregated from 442-3A list"
+        source: "442-2A — Earned Income Exclusions Authorized by Federal Laws"
+        optional: true
+      eitc_exclusion:
+        type: money
+        currency: USD
+        description: "EITC advance or Child Tax Credit payment received (payroll advance or tax refund)"
+        source: "442-2B — Earned Income Tax Credit and Child Tax Credit Payments"
+        optional: true
+      irregular_earned_income:
+        type: money
+        currency: USD
+        description: "Infrequent or irregular earned income received this calendar quarter (amount subject to exclusion; up to $30 is excludable per 442-1A/442-2C)"
+        source: "442-1A — Infrequent/Irregular Income; 442-2C — Infrequent/Irregular Earned Income"
+        optional: true
+      student_earned_income:
+        type: money
+        currency: USD
+        description: "Earned income of a blind or disabled student under age 22 attending school at least the required weekly hours"
+        source: "442-2D — Student Earned Income Exclusion"
+        optional: true
+      student_monthly_limit:
+        type: money
+        currency: USD
+        description: "Monthly maximum for student earned income exclusion (Addendum 1, indexed annually; e.g. $2,410 for 2026)"
+        source: "Addendum 1 PROGRAM STANDARDS — Student Earned Income Exclusion"
+        optional: true
+      non_needs_based_unearned_remainder:
+        type: money
+        currency: USD
+        description: "Unused portion of the $20/month general income exclusion after applying it to non-needs-based unearned income in the same month; applied to earned income in step 5"
+        source: "442-1B — $20 Per Month General Income Exclusion; 442-2E — $20 Per Month General Income Exclusion"
+        optional: true
+      impairment_work_expenses:
+        type: money
+        currency: USD
+        description: "Verified impairment-related work expenses paid by a disabled individual (or over-65 former SSI/APA recipient) necessary and directly related to their impairment to enable work"
+        source: "442-2G — Impairment Related Work Expenses for Disabled"
+        optional: true
+      blind_work_expenses:
+        type: money
+        currency: USD
+        description: "Verified work expenses of a blind individual; any work expense qualifies, whether or not directly related to blindness (broader than IRWE)"
+        source: "442-2I — Work Expenses for the Blind"
+        optional: true
+      self_support_exclusion:
+        type: money
+        currency: USD
+        description: "Earned income used to fulfill an SSA- or DVR-approved plan for achieving self-support (amount specified in the approved plan)"
+        source: "442-1C — Amount to Fulfill a Plan for Achieving Self-Support"
+        optional: true
+
+decisions:
+  adjusted_earned_income:
+    type: money
+    currency: USD
+    description: "Final adjusted earned income after all 10 exclusion steps in mandatory 442-4 order (step 10: self-support plan exclusion)"
+    expr: "after_blind - self_support_exclusion"
+
+rule_set:
+  name: "exclusion_chain"
+  precedence: "deny_overrides_allow"
+  description: "Pure computation sub-module — applies 10-step earned income exclusion chain from APA 442-4. No eligibility determinations; output is adjusted_earned_income."
+  workflow_stages:
+    - name: income_classification
+      description: Classify income as earned or unearned (441)
+    - name: unearned_exclusions
+      description: Apply unearned income exclusions (442-1, 442-3)
+    - name: earned_exclusion_chain
+      description: Apply 10-step earned income exclusion sequence (442-2, 442-4)
+    - name: reasonable_compatibility
+      description: Cross-check client vs DOL adjusted income (523B)
+    - name: eligibility_determination
+      description: Compare adjusted income to income standard and set eligible
+
+rules:
+  - id: AK-EXCL-ALLOW-001
+    kind: allow
+    priority: 100
+    group: earned_exclusion_chain
+    description: "Computation-only module; exclusion chain always produces a result"
+    source: "442-4 — The Order in Which Income Exclusions Are Applied"
+    when: "true"
+    then:
+      - add_reason:
+          code: EXCLUSION_CHAIN_COMPLETE
+          message: "Earned income exclusion chain applied in mandatory APA 442-4 order."
+    review:
+      extraction_fidelity: 3
+      source_clarity: 3
+      logic_complexity: 1
+      policy_complexity: 1
+
+computed:
+  after_federal:
+    type: money
+    currency: USD
+    description: "Step 1: Gross earned income minus federal-law-authorized exclusions (442-3A list)"
+    source: "442-2A — Earned Income Exclusions Authorized by Federal Laws; 442-4 step 1"
+    expr: "gross_earned_income - federal_exclusions"  # expr confirmed in /refine-guidance
+    review:
+      extraction_fidelity: 4
+      source_clarity: 4
+      logic_complexity: 1
+      policy_complexity: 2
+      notes: "Federal exclusions list (442-3A) is lengthy and varied; modeled as pre-aggregated input 'federal_exclusions'. Strong match to policy step."
+
+  after_eitc:
+    type: money
+    currency: USD
+    description: "Step 2: After removing EITC advance or Child Tax Credit refund from gross"
+    source: "442-2B — Earned Income Tax Credit and Child Tax Credit Payments; 442-4 step 2"
+    expr: "after_federal - eitc_exclusion"  # expr confirmed in /refine-guidance
+    review:
+      extraction_fidelity: 5
+      source_clarity: 5
+      logic_complexity: 1
+      policy_complexity: 1
+
+  after_irregular:
+    type: money
+    currency: USD
+    description: "Step 3: After excluding up to $10/month of infrequent or irregular earned income ($30/quarter converted to monthly)"
+    source: "442-1A — Infrequent/Irregular Income; 442-2C — Infrequent/Irregular Earned Income; 442-4 step 3"
+    expr: "after_eitc - min(irregular_earned_income, 10)"
+    review:
+      extraction_fidelity: 4
+      source_clarity: 4
+      logic_complexity: 1
+      policy_complexity: 2
+      notes: "442-1A/442-2C state $30/quarter; system operates in monthly terms so cap is $10/month. The 442-4 table's '$10' value is correct for monthly inputs."
+
+  after_student:
+    type: money
+    currency: USD
+    description: "Step 4: After excluding blind/disabled student earned income up to the monthly Addendum 1 limit"
+    source: "442-2D — Student Earned Income Exclusion; 442-4 step 4"
+    expr: "after_irregular - min(student_earned_income, student_monthly_limit)"  # expr confirmed in /refine-guidance
+    review:
+      extraction_fidelity: 4
+      source_clarity: 4
+      logic_complexity: 2
+      policy_complexity: 3
+      notes: "Monthly cap applied via Addendum 1 limit. Annual cumulative cap also exists in Addendum 1 but requires cross-month state tracking outside single-call CIVIL scope — gap noted. Student must be under 22 and meet attendance requirements (442-2D)."
+
+  after_general_20:
+    type: money
+    currency: USD
+    description: "Step 5: After applying any unused $20/month general income exclusion remainder to earned income"
+    source: "442-1B — $20 Per Month General Income Exclusion; 442-2E; 442-4 step 5"
+    expr: "after_student - min(non_needs_based_unearned_remainder, 20)"  # expr confirmed in /refine-guidance
+    review:
+      extraction_fidelity: 4
+      source_clarity: 4
+      logic_complexity: 2
+      policy_complexity: 3
+      notes: "non_needs_based_unearned_remainder is pre-computed by caller as ($20 minus amount already applied to unearned income). Cap of 20 prevents over-exclusion. Needs-based unearned income does not receive this exclusion (441-2D, 442-1B)."
+
+  after_65:
+    type: money
+    currency: USD
+    description: "Step 6: After excluding the first $65 of remaining earned income"
+    source: "442-2F — $65 Earned Income Exclusion; 442-4 step 6"
+    expr: "after_general_20 - min(after_general_20, 65)"  # expr confirmed in /refine-guidance
+    tags: [output]
+    review:
+      extraction_fidelity: 5
+      source_clarity: 5
+      logic_complexity: 1
+      policy_complexity: 1
+
+  after_irwe:
+    type: money
+    currency: USD
+    description: "Step 7: After subtracting verified impairment-related work expenses for disabled individuals"
+    source: "442-2G — Impairment Related Work Expenses for Disabled; 442-4 step 7"
+    expr: "after_65 - impairment_work_expenses"  # expr confirmed in /refine-guidance
+    tags: [output]
+    review:
+      extraction_fidelity: 4
+      source_clarity: 4
+      logic_complexity: 1
+      policy_complexity: 2
+      notes: "IRWE must be verified before exclusion; modeled as pre-verified input. Non-negativity (IRWE <= after_65) is a system invariant — policy prohibits reducing below zero."
+
+  after_half:
+    type: money
+    currency: USD
+    description: "Step 8: One-half of remaining earned income is excluded (result = 50% of after_irwe)"
+    source: "442-2H — One-Half of Remaining Earned Income; 442-4 step 8"
+    expr: "after_irwe * 0.5"  # expr confirmed in /refine-guidance
+    tags: [output]
+    review:
+      extraction_fidelity: 5
+      source_clarity: 5
+      logic_complexity: 1
+      policy_complexity: 1
+
+  after_blind:
+    type: money
+    currency: USD
+    description: "Step 9: After subtracting verified work expenses of a blind individual"
+    source: "442-2I — Work Expenses for the Blind; 442-4 step 9"
+    expr: "after_half - blind_work_expenses"  # expr confirmed in /refine-guidance
+    tags: [output]
+    review:
+      extraction_fidelity: 4
+      source_clarity: 4
+      logic_complexity: 1
+      policy_complexity: 2
+      notes: "Blind work expenses cover any work expense (broader than IRWE per 442-2I). Expenses must be verified. Non-negativity is a system invariant."

@@ -1,0 +1,156 @@
+domain: ak_doh
+program: exclusion_chain
+generated: '2026-03-27'
+nodes:
+  Earnings.gross_earned_income:
+    kind: input
+    type: money
+    location: facts.Earnings.gross_earned_income
+    depends_on: []
+    used_by: []
+  Earnings.federal_exclusions:
+    kind: input
+    type: money
+    location: facts.Earnings.federal_exclusions
+    depends_on: []
+    used_by: []
+  Earnings.eitc_exclusion:
+    kind: input
+    type: money
+    location: facts.Earnings.eitc_exclusion
+    depends_on: []
+    used_by: []
+  Earnings.irregular_earned_income:
+    kind: input
+    type: money
+    location: facts.Earnings.irregular_earned_income
+    depends_on: []
+    used_by: []
+  Earnings.student_earned_income:
+    kind: input
+    type: money
+    location: facts.Earnings.student_earned_income
+    depends_on: []
+    used_by: []
+  Earnings.student_monthly_limit:
+    kind: input
+    type: money
+    location: facts.Earnings.student_monthly_limit
+    depends_on: []
+    used_by: []
+  Earnings.non_needs_based_unearned_remainder:
+    kind: input
+    type: money
+    location: facts.Earnings.non_needs_based_unearned_remainder
+    depends_on: []
+    used_by: []
+  Earnings.impairment_work_expenses:
+    kind: input
+    type: money
+    location: facts.Earnings.impairment_work_expenses
+    depends_on: []
+    used_by: []
+  Earnings.blind_work_expenses:
+    kind: input
+    type: money
+    location: facts.Earnings.blind_work_expenses
+    depends_on: []
+    used_by: []
+  Earnings.self_support_exclusion:
+    kind: input
+    type: money
+    location: facts.Earnings.self_support_exclusion
+    depends_on: []
+    used_by: []
+  after_federal:
+    kind: computed
+    type: money
+    location: computed.after_federal
+    depends_on: []
+    used_by:
+    - after_eitc
+    description: 'Step 1: Gross earned income minus federal-law-authorized exclusions
+      (442-3A list)'
+  after_eitc:
+    kind: computed
+    type: money
+    location: computed.after_eitc
+    depends_on:
+    - after_federal
+    used_by:
+    - after_irregular
+    description: 'Step 2: After removing EITC advance or Child Tax Credit refund from
+      gross'
+  after_irregular:
+    kind: computed
+    type: money
+    location: computed.after_irregular
+    depends_on:
+    - after_eitc
+    used_by:
+    - after_student
+    description: 'Step 3: After excluding up to $10/month of infrequent or irregular
+      earned income ($30/quarter converted to monthly)'
+  after_student:
+    kind: computed
+    type: money
+    location: computed.after_student
+    depends_on:
+    - after_irregular
+    used_by:
+    - after_general_20
+    description: 'Step 4: After excluding blind/disabled student earned income up
+      to the monthly Addendum 1 limit'
+  after_general_20:
+    kind: computed
+    type: money
+    location: computed.after_general_20
+    depends_on:
+    - after_student
+    used_by:
+    - after_65
+    description: 'Step 5: After applying any unused $20/month general income exclusion
+      remainder to earned income'
+  after_65:
+    kind: computed
+    type: money
+    location: computed.after_65
+    depends_on:
+    - after_general_20
+    used_by:
+    - after_irwe
+    description: 'Step 6: After excluding the first $65 of remaining earned income'
+  after_irwe:
+    kind: computed
+    type: money
+    location: computed.after_irwe
+    depends_on:
+    - after_65
+    used_by:
+    - after_half
+    description: 'Step 7: After subtracting verified impairment-related work expenses
+      for disabled individuals'
+  after_half:
+    kind: computed
+    type: money
+    location: computed.after_half
+    depends_on:
+    - after_irwe
+    used_by:
+    - after_blind
+    description: 'Step 8: One-half of remaining earned income is excluded (result
+      = 50% of after_irwe)'
+  after_blind:
+    kind: computed
+    type: money
+    location: computed.after_blind
+    depends_on:
+    - after_half
+    used_by: []
+    description: 'Step 9: After subtracting verified work expenses of a blind individual'
+  AK-EXCL-ALLOW-001:
+    kind: rule
+    rule_kind: allow
+    location: rules[AK-EXCL-ALLOW-001]
+    depends_on: []
+    used_by: []

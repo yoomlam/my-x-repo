@@ -1,0 +1,169 @@
+version: "1.0"
+entities:
+  Earnings:
+    gross_earned_income:
+      policy_phrase: "gross earned income"
+      source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+      section: "442-2 EARNED INCOME EXCLUSIONS"
+    federal_exclusions:
+      policy_phrase: "earned income exclusions authorized by federal laws"
+      source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+      section: "442-2A — Earned Income Exclusions Authorized by Federal Laws"
+    eitc_exclusion:
+      policy_phrase: "Earned Income Tax Credit and Child Tax Credit payments"
+      source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+      section: "442-2B — Earned Income Tax Credit and Child Tax Credit Payments"
+    irregular_earned_income:
+      policy_phrase: "infrequent or irregular earned income"
+      source_doc: "442-1 INCOME EXCLUSIONS WHICH APPLY TO BOTH.md"
+      section: "442-1A — Infrequent/Irregular Income; 442-2C — Infrequent/Irregular Earned Income"
+    student_earned_income:
+      policy_phrase: "earned income of a blind or disabled student"
+      source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+      section: "442-2D — Student Earned Income Exclusion"
+    student_monthly_limit:
+      policy_phrase: "monthly maximum for student earned income exclusion"
+      source_doc: "Addendum 1 PROGRAM STANDARDS.md"
+      section: "Addendum 1 PROGRAM STANDARDS — Student Earned Income Exclusion"
+    non_needs_based_unearned_remainder:
+      policy_phrase: "unused portion of the $20 general income exclusion after applying to non-needs-based unearned income"
+      source_doc: "442-1 INCOME EXCLUSIONS WHICH APPLY TO BOTH.md"
+      section: "442-1B — $20 Per Month General Income Exclusion; 442-2E"
+    impairment_work_expenses:
+      policy_phrase: "impairment-related work expenses"
+      source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+      section: "442-2G — Impairment Related Work Expenses for Disabled"
+    blind_work_expenses:
+      policy_phrase: "work expenses for the blind"
+      source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+      section: "442-2I — Work Expenses for the Blind"
+    self_support_exclusion:
+      policy_phrase: "amount to fulfill a plan for achieving self-support"
+      source_doc: "442-1 INCOME EXCLUSIONS WHICH APPLY TO BOTH.md"
+      section: "442-1C — Amount to Fulfill a Plan for Achieving Self-Support"
+
+  ClientData:
+    gross_earned_income:
+      policy_phrase: "client-stated gross monthly earned income"
+      source_doc: "441-1 EARNED INCOME.md"
+      section: "441-1 EARNED INCOME"
+    federal_exclusions:
+      policy_phrase: "earned income exclusions authorized by federal laws"
+      source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+      section: "442-2A — Earned Income Exclusions Authorized by Federal Laws"
+    eitc_exclusion:
+      policy_phrase: "Earned Income Tax Credit and Child Tax Credit payments"
+      source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+      section: "442-2B"
+    irregular_earned_income:
+      policy_phrase: "infrequent or irregular earned income this month"
+      source_doc: "442-1 INCOME EXCLUSIONS WHICH APPLY TO BOTH.md"
+      section: "442-1A — Infrequent/Irregular Income"
+    student_earned_income:
+      policy_phrase: "earned income of a blind or disabled student"
+      source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+      section: "442-2D — Student Earned Income Exclusion"
+    student_monthly_limit:
+      policy_phrase: "monthly maximum for student earned income exclusion"
+      source_doc: "Addendum 1 PROGRAM STANDARDS.md"
+      section: "Addendum 1 PROGRAM STANDARDS — Student Earned Income Exclusion"
+    non_needs_based_unearned_remainder:
+      policy_phrase: "unused portion of the $20 general income exclusion after applying to non-needs-based unearned income"
+      source_doc: "442-1 INCOME EXCLUSIONS WHICH APPLY TO BOTH.md"
+      section: "442-1B — $20 Per Month General Income Exclusion"
+    impairment_work_expenses:
+      policy_phrase: "impairment-related work expenses"
+      source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+      section: "442-2G — Impairment Related Work Expenses for Disabled"
+    blind_work_expenses:
+      policy_phrase: "work expenses for the blind"
+      source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+      section: "442-2I — Work Expenses for the Blind"
+    self_support_exclusion:
+      policy_phrase: "amount to fulfill a plan for achieving self-support"
+      source_doc: "442-1 INCOME EXCLUSIONS WHICH APPLY TO BOTH.md"
+      section: "442-1C"
+    household_type:
+      policy_phrase: "household type"
+      source_doc: "Addendum 1 - Expanded Refuse Cash Income Limits.md"
+      section: "Addendum 1 (ADLTC) — Expanded Refused Cash Income Limits"
+    benefit_year:
+      policy_phrase: "income year / benefit year"
+      source_doc: "Addendum 1 - Expanded Refuse Cash Income Limits.md"
+      section: "Addendum 1 (ADLTC) — Expanded Refused Cash Income Limits"
+
+  DOLRecord:
+    dol_earned_income_available:
+      policy_phrase: "DOL electronic data available"
+      source_doc: "523 MEDICAID EXCEPTIONS TO APA INCOME POLICY.md"
+      section: "523B — Reasonable Compatibility action 5"
+    dol_quarterly_earnings:
+      policy_phrase: "most recent quarter reported by DOL and Workforce Development"
+      source_doc: "523 MEDICAID EXCEPTIONS TO APA INCOME POLICY.md"
+      section: "523B — Reasonable Compatibility"
+    gross_earned_income:
+      policy_phrase: "DOL monthly gross earned income (quarterly earnings divided by 3)"
+      source_doc: "523 MEDICAID EXCEPTIONS TO APA INCOME POLICY.md"
+      section: "523B — Reasonable Compatibility"
+
+computed:
+  after_federal:
+    policy_phrase: "after applying federal-law-authorized exclusions (step 1)"
+    source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+    section: "442-2A; 442-4 step 1"
+  after_eitc:
+    policy_phrase: "after removing EITC and Child Tax Credit payments (step 2)"
+    source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+    section: "442-2B; 442-4 step 2"
+  after_irregular:
+    policy_phrase: "after excluding infrequent/irregular earned income up to $10/month (step 3)"
+    source_doc: "442-1 INCOME EXCLUSIONS WHICH APPLY TO BOTH.md"
+    section: "442-1A; 442-2C; 442-4 step 3"
+  after_student:
+    policy_phrase: "after excluding student earned income up to monthly limit (step 4)"
+    source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+    section: "442-2D; 442-4 step 4"
+  after_general_20:
+    policy_phrase: "after applying unused $20 general exclusion remainder (step 5)"
+    source_doc: "442-1 INCOME EXCLUSIONS WHICH APPLY TO BOTH.md"
+    section: "442-1B; 442-2E; 442-4 step 5"
+  after_65:
+    policy_phrase: "after excluding the first $65 of remaining earned income (step 6)"
+    source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+    section: "442-2F; 442-4 step 6"
+  after_irwe:
+    policy_phrase: "after subtracting impairment-related work expenses (step 7)"
+    source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+    section: "442-2G; 442-4 step 7"
+  after_half:
+    policy_phrase: "after one-half deduction of remaining earned income (step 8)"
+    source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+    section: "442-2H; 442-4 step 8"
+  after_blind:
+    policy_phrase: "after subtracting blind work expenses (step 9)"
+    source_doc: "442-2 EARNED INCOME EXCLUSIONS.md"
+    section: "442-2I; 442-4 step 9"
+  dol_avg_monthly_income:
+    policy_phrase: "DOL quarterly earnings divided by three to get average monthly income"
+    source_doc: "523 MEDICAID EXCEPTIONS TO APA INCOME POLICY.md"
+    section: "523B — Reasonable Compatibility"
+  client_result:
+    policy_phrase: "exclusion chain applied to client-stated income"
+    source_doc: "442-4 THE ORDER IN WHICH INCOME EXCLUSIONS ARE APPLIED.md"
+    section: "442-4; 523B"
+  dol_result:
+    policy_phrase: "exclusion chain applied to DOL-averaged monthly income"
+    source_doc: "523 MEDICAID EXCEPTIONS TO APA INCOME POLICY.md"
+    section: "523B — Reasonable Compatibility"
+  is_compatible:
+    policy_phrase: "income electronically reported by DOL is within 10% of client stated gross monthly income"
+    source_doc: "523 MEDICAID EXCEPTIONS TO APA INCOME POLICY.md"
+    section: "523B — Reasonable Compatibility"
+  manual_verification_required:
+    policy_phrase: "further verification of income required"
+    source_doc: "523 MEDICAID EXCEPTIONS TO APA INCOME POLICY.md"
+    section: "523B — Reasonable Compatibility actions 4 and 5"
+  income_limit:
+    policy_phrase: "income standard / Expanded Refused Cash Income Limit"
+    source_doc: "Addendum 1 - Expanded Refuse Cash Income Limits.md"
+    section: "Addendum 1 (ADLTC) — Expanded Refused Cash Income Limits"

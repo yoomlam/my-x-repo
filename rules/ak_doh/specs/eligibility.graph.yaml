@@ -1,0 +1,262 @@
+domain: ak_doh
+program: eligibility
+generated: '2026-03-27'
+nodes:
+  ClientData.gross_earned_income:
+    kind: input
+    type: money
+    location: facts.ClientData.gross_earned_income
+    depends_on: []
+    used_by: []
+  ClientData.federal_exclusions:
+    kind: input
+    type: money
+    location: facts.ClientData.federal_exclusions
+    depends_on: []
+    used_by: []
+  ClientData.eitc_exclusion:
+    kind: input
+    type: money
+    location: facts.ClientData.eitc_exclusion
+    depends_on: []
+    used_by: []
+  ClientData.irregular_earned_income:
+    kind: input
+    type: money
+    location: facts.ClientData.irregular_earned_income
+    depends_on: []
+    used_by: []
+  ClientData.student_earned_income:
+    kind: input
+    type: money
+    location: facts.ClientData.student_earned_income
+    depends_on: []
+    used_by: []
+  ClientData.student_monthly_limit:
+    kind: input
+    type: money
+    location: facts.ClientData.student_monthly_limit
+    depends_on: []
+    used_by: []
+  ClientData.non_needs_based_unearned_remainder:
+    kind: input
+    type: money
+    location: facts.ClientData.non_needs_based_unearned_remainder
+    depends_on: []
+    used_by: []
+  ClientData.impairment_work_expenses:
+    kind: input
+    type: money
+    location: facts.ClientData.impairment_work_expenses
+    depends_on: []
+    used_by: []
+  ClientData.blind_work_expenses:
+    kind: input
+    type: money
+    location: facts.ClientData.blind_work_expenses
+    depends_on: []
+    used_by: []
+  ClientData.self_support_exclusion:
+    kind: input
+    type: money
+    location: facts.ClientData.self_support_exclusion
+    depends_on: []
+    used_by: []
+  ClientData.household_type:
+    kind: input
+    type: string
+    location: facts.ClientData.household_type
+    depends_on: []
+    used_by:
+    - income_limit
+  ClientData.benefit_year:
+    kind: input
+    type: int
+    location: facts.ClientData.benefit_year
+    depends_on: []
+    used_by:
+    - income_limit
+  DOLRecord.dol_earned_income_available:
+    kind: input
+    type: bool
+    location: facts.DOLRecord.dol_earned_income_available
+    depends_on: []
+    used_by:
+    - manual_verification_required
+    - AK-ELIG-DENY-001
+    - AK-ELIG-DENY-002
+    - AK-ELIG-ALLOW-001
+  DOLRecord.dol_quarterly_earnings:
+    kind: input
+    type: money
+    location: facts.DOLRecord.dol_quarterly_earnings
+    depends_on: []
+    used_by:
+    - dol_avg_monthly_income
+  DOLRecord.gross_earned_income:
+    kind: input
+    type: money
+    location: facts.DOLRecord.gross_earned_income
+    depends_on: []
+    used_by: []
+  DOLRecord.federal_exclusions:
+    kind: input
+    type: money
+    location: facts.DOLRecord.federal_exclusions
+    depends_on: []
+    used_by: []
+  DOLRecord.eitc_exclusion:
+    kind: input
+    type: money
+    location: facts.DOLRecord.eitc_exclusion
+    depends_on: []
+    used_by: []
+  DOLRecord.irregular_earned_income:
+    kind: input
+    type: money
+    location: facts.DOLRecord.irregular_earned_income
+    depends_on: []
+    used_by: []
+  DOLRecord.student_earned_income:
+    kind: input
+    type: money
+    location: facts.DOLRecord.student_earned_income
+    depends_on: []
+    used_by: []
+  DOLRecord.student_monthly_limit:
+    kind: input
+    type: money
+    location: facts.DOLRecord.student_monthly_limit
+    depends_on: []
+    used_by: []
+  DOLRecord.non_needs_based_unearned_remainder:
+    kind: input
+    type: money
+    location: facts.DOLRecord.non_needs_based_unearned_remainder
+    depends_on: []
+    used_by: []
+  DOLRecord.impairment_work_expenses:
+    kind: input
+    type: money
+    location: facts.DOLRecord.impairment_work_expenses
+    depends_on: []
+    used_by: []
+  DOLRecord.blind_work_expenses:
+    kind: input
+    type: money
+    location: facts.DOLRecord.blind_work_expenses
+    depends_on: []
+    used_by: []
+  DOLRecord.self_support_exclusion:
+    kind: input
+    type: money
+    location: facts.DOLRecord.self_support_exclusion
+    depends_on: []
+    used_by: []
+  expanded_refused_cash_income_limits:
+    kind: input
+    type: table
+    location: tables.expanded_refused_cash_income_limits
+    depends_on: []
+    used_by:
+    - income_limit
+  dol_avg_monthly_income:
+    kind: computed
+    type: money
+    location: computed.dol_avg_monthly_income
+    depends_on:
+    - DOLRecord.dol_quarterly_earnings
+    used_by: []
+    description: DOL quarterly earnings divided by 3 to get average monthly income
+      for comparison
+  client_result:
+    kind: computed
+    type: object
+    location: computed.client_result
+    depends_on: []
+    used_by: []
+    description: Exclusion chain applied to client-stated income
+    invoke_module: exclusion_chain
+    label: client_result [→ exclusion_chain]
+  dol_result:
+    kind: computed
+    type: object
+    location: computed.dol_result
+    depends_on: []
+    used_by: []
+    description: Exclusion chain applied to DOL-averaged monthly income for reasonable
+      compatibility comparison
+    invoke_module: exclusion_chain
+    label: dol_result [→ exclusion_chain]
+  is_compatible:
+    kind: computed
+    type: bool
+    location: computed.is_compatible
+    depends_on:
+    - client_result.adjusted_earned_income
+    - dol_result.adjusted_earned_income
+    used_by:
+    - manual_verification_required
+    - AK-ELIG-ALLOW-001
+    description: True when DOL-adjusted income is within 10% of client-adjusted income
+      (reasonably compatible per 523B)
+  manual_verification_required:
+    kind: computed
+    type: bool
+    location: computed.manual_verification_required
+    depends_on:
+    - DOLRecord.dol_earned_income_available
+    - client_result.adjusted_earned_income
+    - dol_result.adjusted_earned_income
+    - income_limit
+    - is_compatible
+    used_by: []
+    description: 'True when manual verification is needed: either DOL data is unavailable
+      (action 5), or client is within limit but DOL is above and NOT reasonably compatible
+      (action 4 incompatible path)'
+  income_limit:
+    kind: computed
+    type: money
+    location: computed.income_limit
+    depends_on:
+    - ClientData.household_type
+    - ClientData.benefit_year
+    - expanded_refused_cash_income_limits
+    used_by:
+    - manual_verification_required
+    - AK-ELIG-DENY-001
+    - AK-ELIG-DENY-002
+    - AK-ELIG-ALLOW-001
+    description: Applicable income standard for this household type and benefit year,
+      from the Expanded Refused Cash Income Limits table
+  AK-ELIG-DENY-001:
+    kind: rule
+    rule_kind: deny
+    location: rules[AK-ELIG-DENY-001]
+    depends_on:
+    - DOLRecord.dol_earned_income_available
+    - client_result.adjusted_earned_income
+    - dol_result.adjusted_earned_income
+    - income_limit
+    used_by: []
+  AK-ELIG-DENY-002:
+    kind: rule
+    rule_kind: deny
+    location: rules[AK-ELIG-DENY-002]
+    depends_on:
+    - DOLRecord.dol_earned_income_available
+    - client_result.adjusted_earned_income
+    - dol_result.adjusted_earned_income
+    - income_limit
+    used_by: []
+  AK-ELIG-ALLOW-001:
+    kind: rule
+    rule_kind: allow
+    location: rules[AK-ELIG-ALLOW-001]
+    depends_on:
+    - DOLRecord.dol_earned_income_available
+    - client_result.adjusted_earned_income
+    - dol_result.adjusted_earned_income
+    - income_limit
+    - is_compatible
+    used_by: []

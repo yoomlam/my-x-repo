@@ -1,1 +1,6 @@
+
+# Catala generated files
+_build/
+_targets/
+
 .xlator.local.env

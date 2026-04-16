@@ -1,0 +1,404 @@
+> Using Eligibility
+
+# Tests: Alaska Medicaid income eligibility — covers all five 523B action paths plus IRWE and couple-type cases (benefit year 2026 unless noted). Entity prefixes: ClientData.* for client-stated inputs, DOLRecord.* for DOL-verified inputs.
+
+## Test: ext_001 — 523B example: client $1,707.50 below A1E 2025 standard ($1,795); DOL $1,824.17 above but within 10% band — approve
+
+```catala
+#[test]
+declaration scope TestExt001:
+  result scope Eligibility.EligibilityDecision
+
+scope TestExt001:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $3,500
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A1E
+    -- benefit_year: 2025
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $11,200
+    -- gross_earned_income: $3,733.33
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = Approve)
+  assertion (result.reasons = [])
+```
+
+## Test: allow_001 — Action 1: both client ($957.50) and DOL ($957.50) adjusted income well below A1E 2026 standard ($1,845) — approve
+
+```catala
+#[test]
+declaration scope TestAllow001:
+  result scope Eligibility.EligibilityDecision
+
+scope TestAllow001:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $2,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A1E
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $6,000
+    -- gross_earned_income: $2,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = Approve)
+  assertion (result.reasons = [])
+```
+
+## Test: deny_both_001 — Action 2: both client ($1,957.50) and DOL ($1,957.50) adjusted income above A1E 2026 standard ($1,845) — deny
+
+```catala
+#[test]
+declaration scope TestDenyBoth001:
+  result scope Eligibility.EligibilityDecision
+
+scope TestDenyBoth001:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $4,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A1E
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $12,000
+    -- gross_earned_income: $4,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = Deny)
+  assertion (result.reasons = [ IncomeExceedsStandardBoth ])
+```
+
+## Test: deny_client_001 — Action 3: client adjusted $2,457.50 above standard; DOL $457.50 below — deny on client statement regardless of DOL
+
+```catala
+#[test]
+declaration scope TestDenyClient001:
+  result scope Eligibility.EligibilityDecision
+
+scope TestDenyClient001:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $5,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A1E
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $3,000
+    -- gross_earned_income: $1,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = Deny)
+  assertion (result.reasons = [ IncomeExceedsStandardClientOnly ])
+```
+
+## Test: allow_compatible_001 — Action 4 compatible: client adjusted $1,800 below standard; DOL $1,900 above but within 10% band — approve
+
+```catala
+#[test]
+declaration scope TestAllowCompatible001:
+  result scope Eligibility.EligibilityDecision
+
+scope TestAllowCompatible001:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $3,685
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A1E
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $11,655
+    -- gross_earned_income: $3,885
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = Approve)
+  assertion (result.reasons = [])
+```
+
+## Test: manual_incompatible_001 — Action 4 incompatible: client adjusted $1,800 below standard; DOL $2,057.50 above and outside 10% band — manual verification required
+
+```catala
+#[test]
+declaration scope TestManualIncompatible001:
+  result scope Eligibility.EligibilityDecision
+
+scope TestManualIncompatible001:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $3,685
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A1E
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $12,600
+    -- gross_earned_income: $4,200
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = ManualVerification)
+  assertion (result.reasons = [])
+```
+
+## Test: manual_no_dol_001 — Action 5: no DOL electronic data — manual verification required regardless of client income ($457.50 below standard)
+
+```catala
+#[test]
+declaration scope TestManualNoDol001:
+  result scope Eligibility.EligibilityDecision
+
+scope TestManualNoDol001:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $1,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A1E
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: false
+    -- dol_quarterly_earnings: $0
+    -- gross_earned_income: $0
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $0
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = ManualVerification)
+  assertion (result.reasons = [])
+```
+
+## Test: allow_boundary_001 — Boundary: client adjusted income exactly $1,845 = A1E 2026 income limit — approve (≤ limit passes)
+
+```catala
+#[test]
+declaration scope TestAllowBoundary001:
+  result scope Eligibility.EligibilityDecision
+
+scope TestAllowBoundary001:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $3,775
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A1E
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $11,325
+    -- gross_earned_income: $3,775
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = Approve)
+  assertion (result.reasons = [])
+```
+
+## Test: allow_irwe_001 — IRWE ($300) applied at step 7: income drops from $1,957.50 to $1,807.50, below A1E 2026 standard — approve
+
+```catala
+#[test]
+declaration scope TestAllowIrwe001:
+  result scope Eligibility.EligibilityDecision
+
+scope TestAllowIrwe001:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $4,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $300
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A1E
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $12,000
+    -- gross_earned_income: $4,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $300
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = Approve)
+  assertion (result.reasons = [])
+```
+
+## Test: deny_couple_001 — A2S couple: both client ($3,457.50) and DOL ($3,457.50) above higher couple standard ($2,732) — deny
+
+```catala
+#[test]
+declaration scope TestDenyCouple001:
+  result scope Eligibility.EligibilityDecision
+
+scope TestDenyCouple001:
+  definition result.client_data equals Eligibility.ClientData {
+    -- gross_earned_income: $7,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+    -- household_type: A2S
+    -- benefit_year: 2026
+  }
+  definition result.d_o_l_record equals Eligibility.DOLRecord {
+    -- dol_earned_income_available: true
+    -- dol_quarterly_earnings: $21,000
+    -- gross_earned_income: $7,000
+    -- federal_exclusions: $0
+    -- eitc_exclusion: $0
+    -- irregular_earned_income: $0
+    -- student_earned_income: $0
+    -- student_monthly_limit: $0
+    -- non_needs_based_unearned_remainder: $20
+    -- impairment_work_expenses: $0
+    -- blind_work_expenses: $0
+    -- self_support_exclusion: $0
+  }
+  assertion (result.eligible = Deny)
+  assertion (result.reasons = [ IncomeExceedsStandardBoth ])
+```
+

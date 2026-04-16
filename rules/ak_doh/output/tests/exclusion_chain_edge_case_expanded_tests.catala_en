@@ -1,0 +1,88 @@
+> Using Exclusion_chain
+
+# Tests: Edge case expanded tests — generated 2026-03-27
+
+## Test: edg_001 — Extreme gross income ($54,705) — 10× highest eligibility standard; no optional exclusions. Result: (54705 - 65) × 0.5 = $27,320.00
+
+```catala
+#[test]
+declaration scope TestEdg001:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestEdg001:
+  definition result.gross_earned_income equals $54,705
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $0
+  definition result.student_earned_income equals $0
+  definition result.student_monthly_limit equals $0
+  definition result.non_needs_based_unearned_remainder equals $0
+  definition result.impairment_work_expenses equals $0
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $27,320)
+```
+
+## Test: edg_002 — All 10 exclusion steps: federal ($500), EITC ($300), irregular ($10), student ($1,000), $20 general, $65 earned, IRWE ($200), one-half, blind work ($100), self-support ($50). Result: $3,802.50
+
+```catala
+#[test]
+declaration scope TestEdg002:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestEdg002:
+  definition result.gross_earned_income equals $10,000
+  definition result.federal_exclusions equals $500
+  definition result.eitc_exclusion equals $300
+  definition result.irregular_earned_income equals $10
+  definition result.student_earned_income equals $1,000
+  definition result.student_monthly_limit equals $2,410
+  definition result.non_needs_based_unearned_remainder equals $20
+  definition result.impairment_work_expenses equals $200
+  definition result.blind_work_expenses equals $100
+  definition result.self_support_exclusion equals $50
+  assertion (result.adjusted_earned_income = $3,802.50)
+```
+
+## Test: edg_003 — Student earned income exactly at monthly limit ($2,410 = $2,410 cap): full $2,410 excluded, cap does not reduce. Result: (5000 - 2410 - 20 - 65) × 0.5 = $1,252.50
+
+```catala
+#[test]
+declaration scope TestEdg003:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestEdg003:
+  definition result.gross_earned_income equals $5,000
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $0
+  definition result.student_earned_income equals $2,410
+  definition result.student_monthly_limit equals $2,410
+  definition result.non_needs_based_unearned_remainder equals $20
+  definition result.impairment_work_expenses equals $0
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $1,252.50)
+```
+
+## Test: edg_004 — IRWE ($115) exactly equals remaining income after step 6 ($115): result is $0. Tests full exhaustion by IRWE without negative overflow.
+
+```catala
+#[test]
+declaration scope TestEdg004:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestEdg004:
+  definition result.gross_earned_income equals $200
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $0
+  definition result.student_earned_income equals $0
+  definition result.student_monthly_limit equals $0
+  definition result.non_needs_based_unearned_remainder equals $20
+  definition result.impairment_work_expenses equals $115
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $0)
+```
+

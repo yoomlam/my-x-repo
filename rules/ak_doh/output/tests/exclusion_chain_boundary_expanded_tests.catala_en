@@ -1,0 +1,193 @@
+> Using Exclusion_chain
+
+# Tests: Boundary expanded tests for exclusion step caps — generated 2026-03-27
+
+## Test: bnd_001 — Irregular income $9 — just below $10 cap; full $9 excluded. Result: (1000 - 9 - 20 - 65) × 0.5 = 453.00
+
+```catala
+#[test]
+declaration scope TestBnd001:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestBnd001:
+  definition result.gross_earned_income equals $1,000
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $9
+  definition result.student_earned_income equals $0
+  definition result.student_monthly_limit equals $0
+  definition result.non_needs_based_unearned_remainder equals $20
+  definition result.impairment_work_expenses equals $0
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $453)
+```
+
+## Test: bnd_002 — Irregular income $10 — exactly at cap; $10 excluded (same result as $9 but confirms cap boundary). Result: (1000 - 10 - 20 - 65) × 0.5 = 452.50
+
+```catala
+#[test]
+declaration scope TestBnd002:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestBnd002:
+  definition result.gross_earned_income equals $1,000
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $10
+  definition result.student_earned_income equals $0
+  definition result.student_monthly_limit equals $0
+  definition result.non_needs_based_unearned_remainder equals $20
+  definition result.impairment_work_expenses equals $0
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $452.50)
+```
+
+## Test: bnd_003 — Irregular income $11 — just above cap; exclusion capped at $10. Result: same as $10 case: (1000 - 10 - 20 - 65) × 0.5 = 452.50
+
+```catala
+#[test]
+declaration scope TestBnd003:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestBnd003:
+  definition result.gross_earned_income equals $1,000
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $11
+  definition result.student_earned_income equals $0
+  definition result.student_monthly_limit equals $0
+  definition result.non_needs_based_unearned_remainder equals $20
+  definition result.impairment_work_expenses equals $0
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $452.50)
+```
+
+## Test: bnd_004 — $20 general exclusion remainder $19 — just below $20 cap; full $19 excluded. Result: (1000 - 19 - 65) × 0.5 = 458.00
+
+```catala
+#[test]
+declaration scope TestBnd004:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestBnd004:
+  definition result.gross_earned_income equals $1,000
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $0
+  definition result.student_earned_income equals $0
+  definition result.student_monthly_limit equals $0
+  definition result.non_needs_based_unearned_remainder equals $19
+  definition result.impairment_work_expenses equals $0
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $458)
+```
+
+## Test: bnd_005 — $20 general exclusion remainder $20 — exactly at cap; $20 excluded. Result: (1000 - 20 - 65) × 0.5 = 457.50
+
+```catala
+#[test]
+declaration scope TestBnd005:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestBnd005:
+  definition result.gross_earned_income equals $1,000
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $0
+  definition result.student_earned_income equals $0
+  definition result.student_monthly_limit equals $0
+  definition result.non_needs_based_unearned_remainder equals $20
+  definition result.impairment_work_expenses equals $0
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $457.50)
+```
+
+## Test: bnd_006 — $20 general exclusion remainder $21 — just above cap; capped at $20. Result: same as $20 case: 457.50
+
+```catala
+#[test]
+declaration scope TestBnd006:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestBnd006:
+  definition result.gross_earned_income equals $1,000
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $0
+  definition result.student_earned_income equals $0
+  definition result.student_monthly_limit equals $0
+  definition result.non_needs_based_unearned_remainder equals $21
+  definition result.impairment_work_expenses equals $0
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $457.50)
+```
+
+## Test: bnd_007 — Gross $64 — just below $65 earned exclusion; full $64 excluded (step 6 clamps to 0). Result: 0
+
+```catala
+#[test]
+declaration scope TestBnd007:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestBnd007:
+  definition result.gross_earned_income equals $64
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $0
+  definition result.student_earned_income equals $0
+  definition result.student_monthly_limit equals $0
+  definition result.non_needs_based_unearned_remainder equals $0
+  definition result.impairment_work_expenses equals $0
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $0)
+```
+
+## Test: bnd_008 — Gross $65 — exactly at $65 earned exclusion; entire income excluded (step 6 zero). Result: 0
+
+```catala
+#[test]
+declaration scope TestBnd008:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestBnd008:
+  definition result.gross_earned_income equals $65
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $0
+  definition result.student_earned_income equals $0
+  definition result.student_monthly_limit equals $0
+  definition result.non_needs_based_unearned_remainder equals $0
+  definition result.impairment_work_expenses equals $0
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $0)
+```
+
+## Test: bnd_009 — Gross $66 — just above $65 earned exclusion; $65 excluded, $1 remains. After step 8: $0.50. Result: 0.50
+
+```catala
+#[test]
+declaration scope TestBnd009:
+  result scope Exclusion_chain.ExclusionChainDecision
+
+scope TestBnd009:
+  definition result.gross_earned_income equals $66
+  definition result.federal_exclusions equals $0
+  definition result.eitc_exclusion equals $0
+  definition result.irregular_earned_income equals $0
+  definition result.student_earned_income equals $0
+  definition result.student_monthly_limit equals $0
+  definition result.non_needs_based_unearned_remainder equals $0
+  definition result.impairment_work_expenses equals $0
+  definition result.blind_work_expenses equals $0
+  definition result.self_support_exclusion equals $0
+  assertion (result.adjusted_earned_income = $0.50)
+```
+

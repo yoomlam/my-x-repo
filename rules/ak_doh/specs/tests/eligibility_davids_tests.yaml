@@ -1,0 +1,327 @@
+test_suite:
+  spec: "eligibility.civil.yaml"
+  description: "David's test cases converted from davids_tests.csv. Covers basic approval/denial paths with various earned income exclusion combinations (federal, EITC, infrequent, student, IRWE, blind work expenses, self-support plan). All cases use A1E or B1E household type, benefit_year 2026, income_standard $1,845."
+  version: "1.0"
+
+# =============================================================================
+# CSV Column → CIVIL Input Mapping
+#
+#   earned_income                       → ClientData.gross_earned_income
+#   dol_earned_income                   → DOLRecord.gross_earned_income
+#                                         (DOLRecord.dol_quarterly_earnings = gross × 3)
+#   federal_earned_income_exclusions    → ClientData/DOLRecord.federal_exclusions
+#   eitc_child_tax_credit               → ClientData/DOLRecord.eitc_exclusion
+#   infrequent_irregular_earnings_excl  → ClientData/DOLRecord.irregular_earned_income
+#   blind_disabled_student_earnings     → ClientData/DOLRecord.student_earned_income
+#                                         (ClientData/DOLRecord.student_monthly_limit: 2410 when non-zero)
+#   general_income_20_exclusion         → ClientData/DOLRecord.non_needs_based_unearned_remainder
+#   impairment_work_expenses            → ClientData/DOLRecord.impairment_work_expenses
+#   blind_work_expenses                 → ClientData/DOLRecord.blind_work_expenses
+#   earnings_for_self_support_plan      → ClientData/DOLRecord.self_support_exclusion
+#   client_adjusted_earned_income       → expected.client_adjusted_income
+#   dol_adjusted_earned_income          → expected.dol_avg_monthly_adjusted
+#   income_year                         → ClientData.benefit_year
+#   income_standard                     → expected.income_standard
+#   dol_data_available                  → DOLRecord.dol_earned_income_available
+#   medicaid_decision=APPROVE           → eligible: "approve"
+#   medicaid_decision=DENY              → eligible: "deny"  (reasons: INCOME_EXCEEDS_STANDARD_BOTH or _CLIENT_ONLY)
+#   medicaid_decision=manual_verify     → eligible: "manual_verification"
+#   is_reasonably_compatible=FALSE+     → eligible: "manual_verification"
+#     client below / DOL above standard   (treated as manual verification, not hard deny)
+# =============================================================================
+
+tests:
+
+  # ---------------------------------------------------------------------------
+  # david_001 — APPROVE: both client and DOL well below standard (simple chain)
+  # client: (2000 - 20 - 65) * 0.5 = 957.50  < 1845
+  # dol:    (2000 - 20 - 65) * 0.5 = 957.50  < 1845
+  # ---------------------------------------------------------------------------
+  - case_id: "david_001"
+    description: "Both client ($957.50) and DOL ($957.50) adjusted income well below A1E 2026 standard ($1,845) — approve"
+    inputs:
+      ClientData.gross_earned_income: 2000
+      ClientData.non_needs_based_unearned_remainder: 20
+      ClientData.household_type: "A1E"
+      ClientData.benefit_year: 2026
+      DOLRecord.dol_earned_income_available: true
+      DOLRecord.dol_quarterly_earnings: 6000
+      DOLRecord.gross_earned_income: 2000
+      DOLRecord.non_needs_based_unearned_remainder: 20
+    expected:
+      eligible: "approve"
+      client_adjusted_income: 957.50
+      dol_avg_monthly_adjusted: 957.50
+      income_standard: 1845
+      reasons: []
+    tags: ["davids", "allow", "both_below_standard", "action_1"]
+
+  # ---------------------------------------------------------------------------
+  # david_002 — APPROVE: client below standard, DOL above but compatible
+  # client: (3685 - 20 - 65) * 0.5 = 1800.00  < 1845
+  # dol:    (3885 - 20 - 65) * 0.5 = 1900.00  > 1845
+  # is_compatible: between(1900, 1620, 1980) = true → approve on client
+  # ---------------------------------------------------------------------------
+  - case_id: "david_002"
+    description: "Client adjusted $1,800 below standard; DOL $1,900 above but within 10% band (compatible) — approve"
+    inputs:
+      ClientData.gross_earned_income: 3685
+      ClientData.non_needs_based_unearned_remainder: 20
+      ClientData.household_type: "A1E"
+      ClientData.benefit_year: 2026
+      DOLRecord.dol_earned_income_available: true
+      DOLRecord.dol_quarterly_earnings: 11655
+      DOLRecord.gross_earned_income: 3885
+      DOLRecord.non_needs_based_unearned_remainder: 20
+    expected:
+      eligible: "approve"
+      client_adjusted_income: 1800.00
+      dol_avg_monthly_adjusted: 1900.00
+      income_standard: 1845
+      reasons: []
+    tags: ["davids", "allow", "client_below_dol_above", "compatible", "action_4"]
+
+  # ---------------------------------------------------------------------------
+  # david_003 — DENY: both client and DOL above standard (simple chain)
+  # client: (4000 - 20 - 65) * 0.5 = 1957.50  > 1845
+  # dol:    (4000 - 20 - 65) * 0.5 = 1957.50  > 1845
+  # ---------------------------------------------------------------------------
+  - case_id: "david_003"
+    description: "Both client ($1,957.50) and DOL ($1,957.50) adjusted income above A1E 2026 standard ($1,845) — deny"
+    inputs:
+      ClientData.gross_earned_income: 4000
+      ClientData.non_needs_based_unearned_remainder: 20
+      ClientData.household_type: "A1E"
+      ClientData.benefit_year: 2026
+      DOLRecord.dol_earned_income_available: true
+      DOLRecord.dol_quarterly_earnings: 12000
+      DOLRecord.gross_earned_income: 4000
+      DOLRecord.non_needs_based_unearned_remainder: 20
+    expected:
+      eligible: "deny"
+      client_adjusted_income: 1957.50
+      dol_avg_monthly_adjusted: 1957.50
+      income_standard: 1845
+      reasons:
+        - code: "INCOME_EXCEEDS_STANDARD_BOTH"
+    tags: ["davids", "deny", "both_above_standard", "action_2"]
+
+  # ---------------------------------------------------------------------------
+  # david_004 — DENY: both above standard, complex exclusion chain (B1E)
+  # Exclusions: federal=50, eitc=500, infrequent=10, student=600,
+  #             irwe=0, blind_work=20, self_support=20
+  # client: (6000 - 50 - 500 - 10 - 600 - 20 - 65) * 0.5 - 20 - 20 = 2337.50 > 1845
+  # dol:    (6500 - 50 - 500 - 10 - 600 - 20 - 65) * 0.5 - 20 - 20 = 2587.50 > 1845
+  # is_compatible=FALSE but moot — both above standard
+  # ---------------------------------------------------------------------------
+  - case_id: "david_004"
+    description: "B1E, complex exclusion chain (federal/EITC/infrequent/student/blind work/self-support): client $2,337.50 and DOL $2,587.50 both above standard — deny"
+    inputs:
+      ClientData.gross_earned_income: 6000
+      ClientData.federal_exclusions: 50
+      ClientData.eitc_exclusion: 500
+      ClientData.irregular_earned_income: 10
+      ClientData.student_earned_income: 600
+      ClientData.student_monthly_limit: 2410
+      ClientData.non_needs_based_unearned_remainder: 20
+      ClientData.blind_work_expenses: 20
+      ClientData.self_support_exclusion: 20
+      ClientData.household_type: "B1E"
+      ClientData.benefit_year: 2026
+      DOLRecord.dol_earned_income_available: true
+      DOLRecord.dol_quarterly_earnings: 19500
+      DOLRecord.gross_earned_income: 6500
+      DOLRecord.federal_exclusions: 50
+      DOLRecord.eitc_exclusion: 500
+      DOLRecord.irregular_earned_income: 10
+      DOLRecord.student_earned_income: 600
+      DOLRecord.student_monthly_limit: 2410
+      DOLRecord.non_needs_based_unearned_remainder: 20
+      DOLRecord.blind_work_expenses: 20
+      DOLRecord.self_support_exclusion: 20
+    expected:
+      eligible: "deny"
+      client_adjusted_income: 2337.50
+      dol_avg_monthly_adjusted: 2587.50
+      income_standard: 1845
+      reasons:
+        - code: "INCOME_EXCEEDS_STANDARD_BOTH"
+    tags: ["davids", "deny", "both_above_standard", "complex_exclusions", "b1e"]
+
+  # ---------------------------------------------------------------------------
+  # david_005 — APPROVE: blind work expenses + self-support eliminate all adjusted income (B1E)
+  # Exclusions: blind_work=300, self_support=150
+  # client: (500 - 20 - 65) * 0.5 = 207.50; 207.50 - 300 - 150 → clamped to 0
+  # dol:    same gross → 0
+  # ---------------------------------------------------------------------------
+  - case_id: "david_005"
+    description: "B1E: blind work expenses ($300) and self-support plan ($150) fully eliminate adjusted income — client and DOL both $0 — approve"
+    inputs:
+      ClientData.gross_earned_income: 500
+      ClientData.non_needs_based_unearned_remainder: 20
+      ClientData.blind_work_expenses: 300
+      ClientData.self_support_exclusion: 150
+      ClientData.household_type: "B1E"
+      ClientData.benefit_year: 2026
+      DOLRecord.dol_earned_income_available: true
+      DOLRecord.dol_quarterly_earnings: 1500
+      DOLRecord.gross_earned_income: 500
+      DOLRecord.non_needs_based_unearned_remainder: 20
+      DOLRecord.blind_work_expenses: 300
+      DOLRecord.self_support_exclusion: 150
+    expected:
+      eligible: "approve"
+      client_adjusted_income: 0
+      dol_avg_monthly_adjusted: 0
+      income_standard: 1845
+      reasons: []
+    tags: ["davids", "allow", "zero_adjusted_income", "blind_work_expenses", "self_support"]
+
+  # ---------------------------------------------------------------------------
+  # david_006 — APPROVE: multiple exclusions including student, EITC, infrequent, blind work, self-support
+  # client: (1000 - 0 - 50 - 10 - 15 - 20 - 65) * 0.5 - 150 - 100 = 420 - 250 = 170
+  # dol:    (1000 - 0 - 50 - 10 - 15 - 20 - 65) * 0.5 - 150 - 100 = 170
+  # irwe is blank/null in CSV → 0
+  # ---------------------------------------------------------------------------
+  - case_id: "david_006"
+    description: "A1E: EITC ($50), infrequent ($10), student ($15), blind work ($150), self-support ($100) exclusions — client and DOL both $170 — approve"
+    inputs:
+      ClientData.gross_earned_income: 1000
+      ClientData.eitc_exclusion: 50
+      ClientData.irregular_earned_income: 10
+      ClientData.student_earned_income: 15
+      ClientData.student_monthly_limit: 2410
+      ClientData.non_needs_based_unearned_remainder: 20
+      ClientData.blind_work_expenses: 150
+      ClientData.self_support_exclusion: 100
+      ClientData.household_type: "A1E"
+      ClientData.benefit_year: 2026
+      DOLRecord.dol_earned_income_available: true
+      DOLRecord.dol_quarterly_earnings: 3000
+      DOLRecord.gross_earned_income: 1000
+      DOLRecord.eitc_exclusion: 50
+      DOLRecord.irregular_earned_income: 10
+      DOLRecord.student_earned_income: 15
+      DOLRecord.student_monthly_limit: 2410
+      DOLRecord.non_needs_based_unearned_remainder: 20
+      DOLRecord.blind_work_expenses: 150
+      DOLRecord.self_support_exclusion: 100
+    expected:
+      eligible: "approve"
+      client_adjusted_income: 170
+      dol_avg_monthly_adjusted: 170
+      income_standard: 1845
+      reasons: []
+    tags: ["davids", "allow", "complex_exclusions", "student", "blind_work_expenses"]
+
+  # ---------------------------------------------------------------------------
+  # david_007 — MANUAL VERIFICATION: no DOL electronic history
+  # dol_earned_income_available=FALSE → manual_verification_required
+  # client: (1000 - 20 - 65) * 0.5 = 457.50  < 1845 (no deny fires)
+  # ---------------------------------------------------------------------------
+  - case_id: "david_007"
+    description: "No DOL electronic data available — manual verification required regardless of client income ($457.50 below standard)"
+    inputs:
+      ClientData.gross_earned_income: 1000
+      ClientData.non_needs_based_unearned_remainder: 20
+      ClientData.household_type: "A1E"
+      ClientData.benefit_year: 2026
+      DOLRecord.dol_earned_income_available: false
+      DOLRecord.gross_earned_income: 0
+    expected:
+      eligible: "manual_verification"
+      client_adjusted_income: 457.50
+      income_standard: 1845
+      reasons: []
+    tags: ["davids", "manual_verification", "no_dol_history", "action_5"]
+
+  # ---------------------------------------------------------------------------
+  # david_008 — DENY: client above standard, DOL below (Action 3)
+  # client: (5000 - 20 - 65) * 0.5 = 2457.50  > 1845 → deny on client statement
+  # dol:    (1000 - 20 - 65) * 0.5 = 457.50   < 1845
+  # is_compatible=FALSE but irrelevant — client above standard is a direct deny
+  # ---------------------------------------------------------------------------
+  - case_id: "david_008"
+    description: "Action 3: client adjusted $2,457.50 above standard; DOL $457.50 below — deny on client statement regardless of DOL"
+    inputs:
+      ClientData.gross_earned_income: 5000
+      ClientData.non_needs_based_unearned_remainder: 20
+      ClientData.household_type: "A1E"
+      ClientData.benefit_year: 2026
+      DOLRecord.dol_earned_income_available: true
+      DOLRecord.dol_quarterly_earnings: 3000
+      DOLRecord.gross_earned_income: 1000
+      DOLRecord.non_needs_based_unearned_remainder: 20
+    expected:
+      eligible: "deny"
+      client_adjusted_income: 2457.50
+      dol_avg_monthly_adjusted: 457.50
+      income_standard: 1845
+      reasons:
+        - code: "INCOME_EXCEEDS_STANDARD_CLIENT_ONLY"
+    tags: ["davids", "deny", "income_exceeds_standard", "action_3"]
+
+  # ---------------------------------------------------------------------------
+  # david_009 — MANUAL VERIFICATION: client below standard, DOL above, NOT compatible (B1E)
+  # Exclusions: eitc=50, infrequent=10, student=25
+  # client: (3685 - 0 - 50 - 10 - 25 - 20 - 65) * 0.5 = 3515 * 0.5 = 1757.50  < 1845
+  # dol:    (4200 - 0 - 50 - 10 - 25 - 20 - 65) * 0.5 = 4030 * 0.5 = 2015.00   > 1845
+  # is_compatible=FALSE → manual verification (client ≤ std, DOL > std, not compatible)
+  # ---------------------------------------------------------------------------
+  - case_id: "david_009"
+    description: "B1E: client adjusted $1,757.50 below standard; DOL $2,015 above and NOT within 10% band (incompatible) — manual verification required"
+    inputs:
+      ClientData.gross_earned_income: 3685
+      ClientData.eitc_exclusion: 50
+      ClientData.irregular_earned_income: 10
+      ClientData.student_earned_income: 25
+      ClientData.student_monthly_limit: 2410
+      ClientData.non_needs_based_unearned_remainder: 20
+      ClientData.household_type: "B1E"
+      ClientData.benefit_year: 2026
+      DOLRecord.dol_earned_income_available: true
+      DOLRecord.dol_quarterly_earnings: 12600
+      DOLRecord.gross_earned_income: 4200
+      DOLRecord.eitc_exclusion: 50
+      DOLRecord.irregular_earned_income: 10
+      DOLRecord.student_earned_income: 25
+      DOLRecord.student_monthly_limit: 2410
+      DOLRecord.non_needs_based_unearned_remainder: 20
+    expected:
+      eligible: "manual_verification"
+      client_adjusted_income: 1757.50
+      dol_avg_monthly_adjusted: 2015.00
+      income_standard: 1845
+      reasons: []
+    tags: ["davids", "manual_verification", "incompatible", "client_below_dol_above", "b1e"]
+    notes: "CSV labels this DENY with reason 'is_reasonably_compatible=FALSE'. Policy maps client-below/DOL-above/incompatible to manual verification, not hard denial."
+
+  # ---------------------------------------------------------------------------
+  # david_010 — APPROVE: client below standard, DOL above but compatible (B1E)
+  # Exclusions: eitc=75, blind_work=20
+  # client: (3700 - 0 - 75 - 0 - 0 - 20 - 65) * 0.5 - 20 = 3540 * 0.5 - 20 = 1770 - 20 = 1750  < 1845
+  # dol:    (4000 - 0 - 75 - 0 - 0 - 20 - 65) * 0.5 - 20 = 3840 * 0.5 - 20 = 1920 - 20 = 1900  > 1845
+  # is_compatible: between(1900, 1575, 1925) = true → approve on client
+  # ---------------------------------------------------------------------------
+  - case_id: "david_010"
+    description: "B1E: EITC ($75) + blind work ($20) exclusions; client $1,750 below standard; DOL $1,900 above but within 10% band (compatible) — approve"
+    inputs:
+      ClientData.gross_earned_income: 3700
+      ClientData.eitc_exclusion: 75
+      ClientData.non_needs_based_unearned_remainder: 20
+      ClientData.blind_work_expenses: 20
+      ClientData.household_type: "B1E"
+      ClientData.benefit_year: 2026
+      DOLRecord.dol_earned_income_available: true
+      DOLRecord.dol_quarterly_earnings: 12000
+      DOLRecord.gross_earned_income: 4000
+      DOLRecord.eitc_exclusion: 75
+      DOLRecord.non_needs_based_unearned_remainder: 20
+      DOLRecord.blind_work_expenses: 20
+    expected:
+      eligible: "approve"
+      client_adjusted_income: 1750.00
+      dol_avg_monthly_adjusted: 1900.00
+      income_standard: 1845
+      reasons: []
+    tags: ["davids", "allow", "client_below_dol_above", "compatible", "b1e", "action_4"]

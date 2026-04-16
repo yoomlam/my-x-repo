@@ -1,0 +1,372 @@
+module: "eligibility"
+description: "Alaska Medicaid income eligibility determination based on adjusted earned income after exclusions. Applies the APA 10-step exclusion chain to both client-stated and DOL-reported income, checks reasonable compatibility (523B), and determines eligibility against the Expanded Refused Cash Income Limits."
+version: "2026Q1"
+jurisdiction:
+  level: state
+  country: US
+  state: AK
+effective:
+  start: 2026-01-01
+
+facts:
+  ClientData:
+    description: "Client-stated income and all applicable exclusion inputs"
+    fields:
+      gross_earned_income:
+        type: money
+        currency: USD
+        description: "Client-stated gross monthly earned income before any exclusions"
+        source: "441-1 EARNED INCOME"
+      federal_exclusions:
+        type: money
+        currency: USD
+        description: "Total income excluded by federal law applicable to earned income (pre-aggregated from 442-3A list)"
+        source: "442-2A — Earned Income Exclusions Authorized by Federal Laws"
+        optional: true
+      eitc_exclusion:
+        type: money
+        currency: USD
+        description: "EITC advance or Child Tax Credit payment received this month"
+        source: "442-2B — Earned Income Tax Credit and Child Tax Credit Payments"
+        optional: true
+      irregular_earned_income:
+        type: money
+        currency: USD
+        description: "Client-stated infrequent or irregular earned income this month (subject to $10/month exclusion)"
+        source: "442-1A — Infrequent/Irregular Income; 442-2C — Infrequent/Irregular Earned Income"
+        optional: true
+      student_earned_income:
+        type: money
+        currency: USD
+        description: "Client-stated earned income of a blind or disabled student under age 22 attending school regularly"
+        source: "442-2D — Student Earned Income Exclusion"
+        optional: true
+      student_monthly_limit:
+        type: money
+        currency: USD
+        description: "Monthly maximum for student earned income exclusion (Addendum 1, indexed annually; e.g. $2,410 for 2026)"
+        source: "Addendum 1 PROGRAM STANDARDS — Student Earned Income Exclusion"
+        optional: true
+      non_needs_based_unearned_remainder:
+        type: money
+        currency: USD
+        description: "Unused portion of the $20/month general income exclusion after applying to non-needs-based unearned income; applied to earned income in step 5"
+        source: "442-1B — $20 Per Month General Income Exclusion"
+        optional: true
+      impairment_work_expenses:
+        type: money
+        currency: USD
+        description: "Verified impairment-related work expenses for a disabled individual"
+        source: "442-2G — Impairment Related Work Expenses for Disabled"
+        optional: true
+      blind_work_expenses:
+        type: money
+        currency: USD
+        description: "Verified work expenses of a blind individual"
+        source: "442-2I — Work Expenses for the Blind"
+        optional: true
+      self_support_exclusion:
+        type: money
+        currency: USD
+        description: "Earned income used to fulfill an SSA- or DVR-approved plan for achieving self-support"
+        source: "442-1C — Amount to Fulfill a Plan for Achieving Self-Support"
+        optional: true
+      household_type:
+        type: string
+        description: "Household type code used to look up the applicable income standard (e.g. A1E, B1E, H1E, A2S, NHR)"
+        source: "Addendum 1 (ADLTC) — Expanded Refused Cash Income Limits"
+      benefit_year:
+        type: int
+        description: "Calendar year for which income limits apply (e.g. 2026); used to select the correct column in the income limits table"
+        source: "Addendum 1 (ADLTC) — Expanded Refused Cash Income Limits"
+  DOLRecord:
+    description: "DOL wage records — quarterly earnings converted to monthly plus same exclusion inputs for the exclusion chain comparison run"
+    fields:
+      dol_earned_income_available:
+        type: bool
+        description: "True when DOL electronic wage data is available for this client; false when no DOL history exists (e.g. new job, self-employment not reported to DOL)"
+        source: "523B — Reasonable Compatibility action 5"
+      dol_quarterly_earnings:
+        type: money
+        currency: USD
+        description: "Most recent quarter of earnings reported by DOL and Workforce Development"
+        source: "523B — Reasonable Compatibility"
+        optional: true
+      gross_earned_income:
+        type: money
+        currency: USD
+        description: "DOL monthly gross earned income — must be pre-set to dol_quarterly_earnings / 3 by the calling system before invocation"
+        source: "523B — Reasonable Compatibility"
+      federal_exclusions:
+        type: money
+        currency: USD
+        description: "Same as ClientData.federal_exclusions — identical exclusion inputs used for DOL comparison run"
+        source: "442-2A — Earned Income Exclusions Authorized by Federal Laws; 523B"
+        optional: true
+      eitc_exclusion:
+        type: money
+        currency: USD
+        description: "Same as ClientData.eitc_exclusion"
+        source: "442-2B; 523B"
+        optional: true
+      irregular_earned_income:
+        type: money
+        currency: USD
+        description: "Same as ClientData.irregular_earned_income"
+        source: "442-1A; 523B"
+        optional: true
+      student_earned_income:
+        type: money
+        currency: USD
+        description: "Same as ClientData.student_earned_income"
+        source: "442-2D; 523B"
+        optional: true
+      student_monthly_limit:
+        type: money
+        currency: USD
+        description: "Same as ClientData.student_monthly_limit"
+        source: "Addendum 1; 523B"
+        optional: true
+      non_needs_based_unearned_remainder:
+        type: money
+        currency: USD
+        description: "Same as ClientData.non_needs_based_unearned_remainder"
+        source: "442-1B; 523B"
+        optional: true
+      impairment_work_expenses:
+        type: money
+        currency: USD
+        description: "Same as ClientData.impairment_work_expenses"
+        source: "442-2G; 523B"
+        optional: true
+      blind_work_expenses:
+        type: money
+        currency: USD
+        description: "Same as ClientData.blind_work_expenses"
+        source: "442-2I; 523B"
+        optional: true
+      self_support_exclusion:
+        type: money
+        currency: USD
+        description: "Same as ClientData.self_support_exclusion"
+        source: "442-1C; 523B"
+        optional: true
+
+tables:
+  expanded_refused_cash_income_limits:
+    description: "Annual income limit thresholds by household type used to determine the Expanded Refused Cash income eligibility standard"
+    source: "Addendum 1 (ADLTC) — Expanded Refused Cash Income Limits"
+    key: [household_type, benefit_year]
+    value: [income_limit]
+    rows:
+      - { household_type: "A1E",  benefit_year: 2024, income_limit: 1751 }
+      - { household_type: "B1E",  benefit_year: 2024, income_limit: 1751 }
+      - { household_type: "H1E",  benefit_year: 2024, income_limit: 1751 }
+      - { household_type: "A2S",  benefit_year: 2024, income_limit: 2593 }
+      - { household_type: "B2S",  benefit_year: 2024, income_limit: 2593 }
+      - { household_type: "H2S",  benefit_year: 2024, income_limit: 2593 }
+      - { household_type: "A2C",  benefit_year: 2024, income_limit: 2593 }
+      - { household_type: "B2C",  benefit_year: 2024, income_limit: 2593 }
+      - { household_type: "H2C",  benefit_year: 2024, income_limit: 2593 }
+      - { household_type: "NHR",  benefit_year: 2024, income_limit: 1751 }
+      - { household_type: "A1E",  benefit_year: 2025, income_limit: 1795 }
+      - { household_type: "B1E",  benefit_year: 2025, income_limit: 1795 }
+      - { household_type: "H1E",  benefit_year: 2025, income_limit: 1795 }
+      - { household_type: "A2S",  benefit_year: 2025, income_limit: 2658 }
+      - { household_type: "B2S",  benefit_year: 2025, income_limit: 2658 }
+      - { household_type: "H2S",  benefit_year: 2025, income_limit: 2658 }
+      - { household_type: "A2C",  benefit_year: 2025, income_limit: 2658 }
+      - { household_type: "B2C",  benefit_year: 2025, income_limit: 2658 }
+      - { household_type: "H2C",  benefit_year: 2025, income_limit: 2658 }
+      - { household_type: "NHR",  benefit_year: 2025, income_limit: 1795 }
+      - { household_type: "A1E",  benefit_year: 2026, income_limit: 1845 }
+      - { household_type: "B1E",  benefit_year: 2026, income_limit: 1845 }
+      - { household_type: "H1E",  benefit_year: 2026, income_limit: 1845 }
+      - { household_type: "A2S",  benefit_year: 2026, income_limit: 2732 }
+      - { household_type: "B2S",  benefit_year: 2026, income_limit: 2732 }
+      - { household_type: "H2S",  benefit_year: 2026, income_limit: 2732 }
+      - { household_type: "A2C",  benefit_year: 2026, income_limit: 2732 }
+      - { household_type: "B2C",  benefit_year: 2026, income_limit: 2732 }
+      - { household_type: "H2C",  benefit_year: 2026, income_limit: 2732 }
+      - { household_type: "NHR",  benefit_year: 2026, income_limit: 1845 }
+
+decisions:
+  eligible:
+    type: string
+    values: [approve, deny, manual_verification]
+    default: "approve"
+    description: "Medicaid income eligibility result: approve if adjusted income at or below income standard; deny if above standard and not compatible with DOL; manual_verification if above standard but DOL income is compatible"
+    conditional:
+      if: "count(reasons) > 0"
+      then: "\"deny\""
+      else: "if manual_verification_required then \"manual_verification\" else \"approve\""
+  reasons:
+    type: list
+    item: Reason
+    default: []
+    description: "Income-based reasons for a deny decision"
+
+rule_set:
+  name: "ak_medicaid_eligibility"
+  precedence: "deny_overrides_allow"
+  description: "Alaska Medicaid income eligibility rules applying the APA exclusion chain, reasonable compatibility check (523B), and Expanded Refused Cash Income Limits."
+  workflow_stages:
+    - name: income_classification
+      description: Classify income as earned or unearned (441)
+    - name: unearned_exclusions
+      description: Apply unearned income exclusions (442-1, 442-3)
+    - name: earned_exclusion_chain
+      description: Apply 10-step earned income exclusion sequence (442-2, 442-4)
+    - name: reasonable_compatibility
+      description: Cross-check client vs DOL adjusted income (523B)
+    - name: eligibility_determination
+      description: Compare adjusted income to income standard and set eligible
+
+rules:
+  - id: AK-ELIG-DENY-001
+    kind: deny
+    priority: 10
+    group: eligibility_determination
+    mutex_group: income_standard_test
+    description: "Deny when both client-stated and DOL-verified adjusted income exceed the income standard (523B action 2 — no compatibility check needed)"
+    source: "523B — Reasonable Compatibility action 2"
+    when: "DOLRecord.dol_earned_income_available && client_result.adjusted_earned_income > income_limit && dol_result.adjusted_earned_income > income_limit"
+    then:
+      - add_reason:
+          code: INCOME_EXCEEDS_STANDARD_BOTH
+          message: "Both client-stated and DOL-verified adjusted earned income exceed the income standard."
+          citations:
+            - label: "523B — Reasonable Compatibility"
+              excerpt: "Both the client stated earned income and the electronic data are above the income standard. Take client statement and deny the Medicaid. There is no need to check for reasonable compatibility."
+            - label: "Addendum 1 (ADLTC) — Expanded Refused Cash Income Limits"
+              excerpt: "Provides the annual income limit thresholds by household type."
+    review:
+      extraction_fidelity: 5
+      source_clarity: 5
+      logic_complexity: 2
+      policy_complexity: 2
+
+  - id: AK-ELIG-DENY-002
+    kind: deny
+    priority: 11
+    group: eligibility_determination
+    mutex_group: income_standard_test
+    description: "Deny when client-stated income exceeds the standard but DOL income is at or below — accept client statement and deny without compatibility check (523B action 3)"
+    source: "523B — Reasonable Compatibility action 3"
+    when: "DOLRecord.dol_earned_income_available && client_result.adjusted_earned_income > income_limit && dol_result.adjusted_earned_income <= income_limit"
+    then:
+      - add_reason:
+          code: INCOME_EXCEEDS_STANDARD_CLIENT_ONLY
+          message: "Client-stated adjusted earned income exceeds the income standard. Client statement accepted; Medicaid denied."
+          citations:
+            - label: "523B — Reasonable Compatibility"
+              excerpt: "Client stated earned income is above the income standard and the amount verified using electronic data is at or below the income standard. Accept client statement and deny the Medicaid. There is no need to check for reasonable compatibility."
+    review:
+      extraction_fidelity: 5
+      source_clarity: 5
+      logic_complexity: 2
+      policy_complexity: 2
+
+  - id: AK-ELIG-ALLOW-001
+    kind: allow
+    priority: 100
+    group: eligibility_determination
+    description: "Approve when client-stated adjusted income is at or below the income standard"
+    source: "523B — Reasonable Compatibility action 1"
+    when: "DOLRecord.dol_earned_income_available && client_result.adjusted_earned_income <= income_limit && (dol_result.adjusted_earned_income <= income_limit || is_compatible)"
+    then:
+      - add_reason:
+          code: INCOME_WITHIN_STANDARD
+          message: "Adjusted earned income is at or below the income standard and DOL data confirms eligibility."
+    review:
+      extraction_fidelity: 4
+      source_clarity: 4
+      logic_complexity: 2
+      policy_complexity: 2
+      notes: "DOL guard added: allow fires only when DOL is available AND (DOL also within limit, or DOL above limit but compatible). Covers 523B actions 1 and 4-compatible."
+
+computed:
+  dol_avg_monthly_income:
+    type: money
+    currency: USD
+    description: "DOL quarterly earnings divided by 3 to get average monthly income for comparison"
+    source: "523B — Reasonable Compatibility"
+    expr: "DOLRecord.dol_quarterly_earnings / 3"  # expr confirmed in /refine-guidance
+    tags: [output]
+    review:
+      extraction_fidelity: 5
+      source_clarity: 5
+      logic_complexity: 1
+      policy_complexity: 1
+
+  client_result:
+    type: object
+    module: exclusion_chain
+    description: "Exclusion chain applied to client-stated income"
+    source: "442-4 — Order of Exclusions; 523B"
+    invoke:
+      bind:
+        Earnings: ClientData
+    tags: [output]
+    review:
+      extraction_fidelity: 4
+      source_clarity: 4
+      logic_complexity: 2
+      policy_complexity: 3
+      notes: "Invokes exclusion_chain sub-module bound to ClientData entity. All 10 exclusion steps applied in 442-4 order. Output accessed via client_result.adjusted_earned_income."
+
+  dol_result:
+    type: object
+    module: exclusion_chain
+    description: "Exclusion chain applied to DOL-averaged monthly income for reasonable compatibility comparison"
+    source: "523B — Reasonable Compatibility; 442-4 — Order of Exclusions"
+    invoke:
+      bind:
+        Earnings: DOLRecord
+    tags: [output]
+    review:
+      extraction_fidelity: 4
+      source_clarity: 4
+      logic_complexity: 2
+      policy_complexity: 3
+      notes: "Invokes exclusion_chain sub-module bound to DOLRecord entity. DOLRecord.gross_earned_income must be pre-set to dol_quarterly_earnings/3 by calling system. Exclusion inputs mirror ClientData."
+
+  is_compatible:
+    type: bool
+    description: "True when DOL-adjusted income is within 10% of client-adjusted income (reasonably compatible per 523B)"
+    source: "523B — Reasonable Compatibility"
+    expr: "abs(dol_result.adjusted_earned_income - client_result.adjusted_earned_income) <= client_result.adjusted_earned_income * 0.10"  # expr confirmed in /refine-guidance
+    tags: [output]
+    review:
+      extraction_fidelity: 5
+      source_clarity: 5
+      logic_complexity: 2
+      policy_complexity: 2
+      notes: "Directly quoted from 523B: 'within 10% of the client stated gross monthly income'. Applies only when client income is below standard and DOL is above (523B action 4); applied unconditionally here as a derived value."
+
+  manual_verification_required:
+    type: bool
+    description: "True when manual verification is needed: either DOL data is unavailable (action 5), or client is within limit but DOL is above and NOT reasonably compatible (action 4 incompatible path)"
+    source: "523B — Reasonable Compatibility actions 4 and 5"
+    expr: "!DOLRecord.dol_earned_income_available || (client_result.adjusted_earned_income <= income_limit && dol_result.adjusted_earned_income > income_limit && !is_compatible)"
+    review:
+      extraction_fidelity: 4
+      source_clarity: 4
+      logic_complexity: 3
+      policy_complexity: 3
+      notes: "Two triggers: (1) DOL unavailable — 523B action 5 requires further verification; (2) client ≤ limit, DOL > limit, NOT compatible — 523B action 4 incompatible path. Used in eligible decision conditional to return manual_verification instead of approve."
+
+  income_limit:
+    type: money
+    currency: USD
+    description: "Applicable income standard for this household type and benefit year, from the Expanded Refused Cash Income Limits table"
+    source: "Addendum 1 (ADLTC) — Expanded Refused Cash Income Limits"
+    table_lookup:
+      table: expanded_refused_cash_income_limits
+      key: [household_type, benefit_year]
+    tags: [output]
+    review:
+      extraction_fidelity: 5
+      source_clarity: 5
+      logic_complexity: 1
+      policy_complexity: 1

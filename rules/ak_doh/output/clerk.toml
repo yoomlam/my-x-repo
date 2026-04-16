@@ -1,0 +1,9 @@
+[project]
+target_dir = "targets"
+include_dirs = ["."]
+
+[[target]]
+name = "eligibility"
+modules = ["Exclusion_chain", "Eligibility"]
+tests = ["tests/"]
+backends = ["python"]

@@ -1,0 +1,59 @@
+graph TD
+  ClientData_gross_earned_income(["ClientData.gross_earned_income<br/>money"])
+  ClientData_federal_exclusions(["ClientData.federal_exclusions<br/>money"])
+  ClientData_eitc_exclusion(["ClientData.eitc_exclusion<br/>money"])
+  ClientData_irregular_earned_income(["ClientData.irregular_earned_income<br/>money"])
+  ClientData_student_earned_income(["ClientData.student_earned_income<br/>money"])
+  ClientData_student_monthly_limit(["ClientData.student_monthly_limit<br/>money"])
+  ClientData_non_needs_based_unearned_remainder(["ClientData.non_needs_based_unearned_remainder<br/>money"])
+  ClientData_impairment_work_expenses(["ClientData.impairment_work_expenses<br/>money"])
+  ClientData_blind_work_expenses(["ClientData.blind_work_expenses<br/>money"])
+  ClientData_self_support_exclusion(["ClientData.self_support_exclusion<br/>money"])
+  ClientData_household_type(["ClientData.household_type<br/>string"])
+  ClientData_benefit_year(["ClientData.benefit_year<br/>int"])
+  DOLRecord_dol_earned_income_available(["DOLRecord.dol_earned_income_available<br/>bool"])
+  DOLRecord_dol_quarterly_earnings(["DOLRecord.dol_quarterly_earnings<br/>money"])
+  DOLRecord_gross_earned_income(["DOLRecord.gross_earned_income<br/>money"])
+  DOLRecord_federal_exclusions(["DOLRecord.federal_exclusions<br/>money"])
+  DOLRecord_eitc_exclusion(["DOLRecord.eitc_exclusion<br/>money"])
+  DOLRecord_irregular_earned_income(["DOLRecord.irregular_earned_income<br/>money"])
+  DOLRecord_student_earned_income(["DOLRecord.student_earned_income<br/>money"])
+  DOLRecord_student_monthly_limit(["DOLRecord.student_monthly_limit<br/>money"])
+  DOLRecord_non_needs_based_unearned_remainder(["DOLRecord.non_needs_based_unearned_remainder<br/>money"])
+  DOLRecord_impairment_work_expenses(["DOLRecord.impairment_work_expenses<br/>money"])
+  DOLRecord_blind_work_expenses(["DOLRecord.blind_work_expenses<br/>money"])
+  DOLRecord_self_support_exclusion(["DOLRecord.self_support_exclusion<br/>money"])
+  expanded_refused_cash_income_limits(["expanded_refused_cash_income_limits<br/>table"])
+  dol_avg_monthly_income["dol_avg_monthly_income<br/>money"]
+  client_result["client_result [→ exclusion_chain]<br/>object"]
+  dol_result["dol_result [→ exclusion_chain]<br/>object"]
+  is_compatible["is_compatible<br/>bool"]
+  manual_verification_required["manual_verification_required<br/>bool"]
+  income_limit["income_limit<br/>money"]
+  AK_ELIG_DENY_001{{"AK-ELIG-DENY-001<br/>deny"}}
+  AK_ELIG_DENY_002{{"AK-ELIG-DENY-002<br/>deny"}}
+  AK_ELIG_ALLOW_001{{"AK-ELIG-ALLOW-001<br/>allow"}}
+  DOLRecord_dol_quarterly_earnings --> dol_avg_monthly_income
+  client_result_adjusted_earned_income --> is_compatible
+  dol_result_adjusted_earned_income --> is_compatible
+  DOLRecord_dol_earned_income_available --> manual_verification_required
+  client_result_adjusted_earned_income --> manual_verification_required
+  dol_result_adjusted_earned_income --> manual_verification_required
+  income_limit --> manual_verification_required
+  is_compatible --> manual_verification_required
+  ClientData_household_type --> income_limit
+  ClientData_benefit_year --> income_limit
+  expanded_refused_cash_income_limits --> income_limit
+  DOLRecord_dol_earned_income_available --> AK_ELIG_DENY_001
+  client_result_adjusted_earned_income --> AK_ELIG_DENY_001
+  dol_result_adjusted_earned_income --> AK_ELIG_DENY_001
+  income_limit --> AK_ELIG_DENY_001
+  DOLRecord_dol_earned_income_available --> AK_ELIG_DENY_002
+  client_result_adjusted_earned_income --> AK_ELIG_DENY_002
+  dol_result_adjusted_earned_income --> AK_ELIG_DENY_002
+  income_limit --> AK_ELIG_DENY_002
+  DOLRecord_dol_earned_income_available --> AK_ELIG_ALLOW_001
+  client_result_adjusted_earned_income --> AK_ELIG_ALLOW_001
+  dol_result_adjusted_earned_income --> AK_ELIG_ALLOW_001
+  income_limit --> AK_ELIG_ALLOW_001
+  is_compatible --> AK_ELIG_ALLOW_001

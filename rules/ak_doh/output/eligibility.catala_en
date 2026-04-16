@@ -1,0 +1,563 @@
+> Module Eligibility
+> Using Exclusion_chain
+
+# Eligibility
+
+Alaska Medicaid income eligibility determination based on adjusted earned income after exclusions. Applies the APA 10-step exclusion chain to both client-stated and DOL-reported income, checks reasonable compatibility (523B), and determines eligibility against the Expanded Refused Cash Income Limits.
+
+Module: `Eligibility` | Version: `2026Q1` | Effective: 2026-01-01 | Jurisdiction: State (US, AK)
+
+DO NOT EDIT — regenerate with: `python tools/transpile_to_catala.py ak_doh/specs/eligibility.civil.yaml ak_doh/output/eligibility.catala_en --scope EligibilityDecision`
+
+## Declarations
+
+#### gross_earned_income
+
+Client-stated gross monthly earned income before any exclusions
+
+*Source: 441-1 EARNED INCOME*
+
+#### federal_exclusions
+
+Total income excluded by federal law applicable to earned income (pre-aggregated from 442-3A list)
+
+*Source: 442-2A — Earned Income Exclusions Authorized by Federal Laws*
+
+#### eitc_exclusion
+
+EITC advance or Child Tax Credit payment received this month
+
+*Source: 442-2B — Earned Income Tax Credit and Child Tax Credit Payments*
+
+#### irregular_earned_income
+
+Client-stated infrequent or irregular earned income this month (subject to $10/month exclusion)
+
+*Source: 442-1A — Infrequent/Irregular Income; 442-2C — Infrequent/Irregular Earned Income*
+
+#### student_earned_income
+
+Client-stated earned income of a blind or disabled student under age 22 attending school regularly
+
+*Source: 442-2D — Student Earned Income Exclusion*
+
+#### student_monthly_limit
+
+Monthly maximum for student earned income exclusion (Addendum 1, indexed annually; e.g. $2,410 for 2026)
+
+*Source: Addendum 1 PROGRAM STANDARDS — Student Earned Income Exclusion*
+
+#### non_needs_based_unearned_remainder
+
+Unused portion of the $20/month general income exclusion after applying to non-needs-based unearned income; applied to earned income in step 5
+
+*Source: 442-1B — $20 Per Month General Income Exclusion*
+
+#### impairment_work_expenses
+
+Verified impairment-related work expenses for a disabled individual
+
+*Source: 442-2G — Impairment Related Work Expenses for Disabled*
+
+#### blind_work_expenses
+
+Verified work expenses of a blind individual
+
+*Source: 442-2I — Work Expenses for the Blind*
+
+#### self_support_exclusion
+
+Earned income used to fulfill an SSA- or DVR-approved plan for achieving self-support
+
+*Source: 442-1C — Amount to Fulfill a Plan for Achieving Self-Support*
+
+#### household_type
+
+Household type code used to look up the applicable income standard (e.g. A1E, B1E, H1E, A2S, NHR)
+
+*Source: Addendum 1 (ADLTC) — Expanded Refused Cash Income Limits*
+
+#### benefit_year
+
+Calendar year for which income limits apply (e.g. 2026); used to select the correct column in the income limits table
+
+*Source: Addendum 1 (ADLTC) — Expanded Refused Cash Income Limits*
+
+#### dol_earned_income_available
+
+True when DOL electronic wage data is available for this client; false when no DOL history exists (e.g. new job, self-employment not reported to DOL)
+
+*Source: 523B — Reasonable Compatibility action 5*
+
+#### dol_quarterly_earnings
+
+Most recent quarter of earnings reported by DOL and Workforce Development
+
+*Source: 523B — Reasonable Compatibility*
+
+#### gross_earned_income
+
+DOL monthly gross earned income — must be pre-set to dol_quarterly_earnings / 3 by the calling system before invocation
+
+*Source: 523B — Reasonable Compatibility*
+
+#### federal_exclusions
+
+Same as ClientData.federal_exclusions — identical exclusion inputs used for DOL comparison run
+
+*Source: 442-2A — Earned Income Exclusions Authorized by Federal Laws; 523B*
+
+#### eitc_exclusion
+
+Same as ClientData.eitc_exclusion
+
+*Source: 442-2B; 523B*
+
+#### irregular_earned_income
+
+Same as ClientData.irregular_earned_income
+
+*Source: 442-1A; 523B*
+
+#### student_earned_income
+
+Same as ClientData.student_earned_income
+
+*Source: 442-2D; 523B*
+
+#### student_monthly_limit
+
+Same as ClientData.student_monthly_limit
+
+*Source: Addendum 1; 523B*
+
+#### non_needs_based_unearned_remainder
+
+Same as ClientData.non_needs_based_unearned_remainder
+
+*Source: 442-1B; 523B*
+
+#### impairment_work_expenses
+
+Same as ClientData.impairment_work_expenses
+
+*Source: 442-2G; 523B*
+
+#### blind_work_expenses
+
+Same as ClientData.blind_work_expenses
+
+*Source: 442-2I; 523B*
+
+#### self_support_exclusion
+
+Same as ClientData.self_support_exclusion
+
+*Source: 442-1C; 523B*
+
+```catala-metadata
+declaration enumeration HouseholdType:
+  -- A1E
+  -- B1E
+  -- H1E
+  -- A2S
+  -- B2S
+  -- H2S
+  -- A2C
+  -- B2C
+  -- H2C
+  -- NHR
+
+declaration enumeration Eligible:
+  -- Approve
+  -- Deny
+  -- ManualVerification
+
+declaration structure ClientData:
+  data gross_earned_income content money
+  data federal_exclusions content money
+  data eitc_exclusion content money
+  data irregular_earned_income content money
+  data student_earned_income content money
+  data student_monthly_limit content money
+  data non_needs_based_unearned_remainder content money
+  data impairment_work_expenses content money
+  data blind_work_expenses content money
+  data self_support_exclusion content money
+  data household_type content HouseholdType
+  data benefit_year content integer
+
+declaration structure DOLRecord:
+  data dol_earned_income_available content boolean
+  data dol_quarterly_earnings content money
+  data gross_earned_income content money
+  data federal_exclusions content money
+  data eitc_exclusion content money
+  data irregular_earned_income content money
+  data student_earned_income content money
+  data student_monthly_limit content money
+  data non_needs_based_unearned_remainder content money
+  data impairment_work_expenses content money
+  data blind_work_expenses content money
+  data self_support_exclusion content money
+
+declaration enumeration ReasonCode:
+  -- IncomeExceedsStandardBoth
+  -- IncomeExceedsStandardClientOnly
+
+declaration structure ReasonEntry:
+  data triggered content boolean
+  data code content ReasonCode
+
+declaration scope EligibilityDecision:
+  input client_data content ClientData
+  input d_o_l_record content DOLRecord
+  internal manual_verification_required condition
+  internal deny_rule_1_triggered condition
+  internal deny_rule_2_triggered condition
+  internal all_reason_entries content list of ReasonEntry
+  # ── Computed outputs ──
+  output client_result scope Exclusion_chain.ExclusionChainDecision
+  output dol_result scope Exclusion_chain.ExclusionChainDecision
+  output dol_avg_monthly_income content money
+  output is_compatible content boolean
+  output income_limit content money
+  # ── Decisions ──
+  output eligible content Eligible
+  output reasons content list of ReasonCode
+```
+
+## Subscope Wiring
+
+#### client_result
+
+Exclusion chain applied to client-stated income
+
+*Source: 442-4 — Order of Exclusions; 523B*
+
+```catala
+scope EligibilityDecision:
+  definition client_result.gross_earned_income equals client_data.gross_earned_income
+  definition client_result.federal_exclusions equals client_data.federal_exclusions
+  definition client_result.eitc_exclusion equals client_data.eitc_exclusion
+  definition client_result.irregular_earned_income equals client_data.irregular_earned_income
+  definition client_result.student_earned_income equals client_data.student_earned_income
+  definition client_result.student_monthly_limit equals client_data.student_monthly_limit
+  definition client_result.non_needs_based_unearned_remainder equals client_data.non_needs_based_unearned_remainder
+  definition client_result.impairment_work_expenses equals client_data.impairment_work_expenses
+  definition client_result.blind_work_expenses equals client_data.blind_work_expenses
+  definition client_result.self_support_exclusion equals client_data.self_support_exclusion
+
+```
+
+#### dol_result
+
+Exclusion chain applied to DOL-averaged monthly income for reasonable compatibility comparison
+
+*Source: 523B — Reasonable Compatibility; 442-4 — Order of Exclusions*
+
+```catala
+scope EligibilityDecision:
+  definition dol_result.gross_earned_income equals d_o_l_record.gross_earned_income
+  definition dol_result.federal_exclusions equals d_o_l_record.federal_exclusions
+  definition dol_result.eitc_exclusion equals d_o_l_record.eitc_exclusion
+  definition dol_result.irregular_earned_income equals d_o_l_record.irregular_earned_income
+  definition dol_result.student_earned_income equals d_o_l_record.student_earned_income
+  definition dol_result.student_monthly_limit equals d_o_l_record.student_monthly_limit
+  definition dol_result.non_needs_based_unearned_remainder equals d_o_l_record.non_needs_based_unearned_remainder
+  definition dol_result.impairment_work_expenses equals d_o_l_record.impairment_work_expenses
+  definition dol_result.blind_work_expenses equals d_o_l_record.blind_work_expenses
+  definition dol_result.self_support_exclusion equals d_o_l_record.self_support_exclusion
+
+```
+
+## Table Lookups
+
+Annual income limit thresholds by household type used to determine the Expanded Refused Cash income eligibility standard
+
+*Source: Addendum 1 (ADLTC) — Expanded Refused Cash Income Limits*
+
+#### income_limit
+
+Applicable income standard for this household type and benefit year, from the Expanded Refused Cash Income Limits table
+
+*Source: Addendum 1 (ADLTC) — Expanded Refused Cash Income Limits*
+
+```catala
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern A1E and client_data.benefit_year = 2024
+    consequence equals $1,751
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern B1E and client_data.benefit_year = 2024
+    consequence equals $1,751
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern H1E and client_data.benefit_year = 2024
+    consequence equals $1,751
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern A2S and client_data.benefit_year = 2024
+    consequence equals $2,593
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern B2S and client_data.benefit_year = 2024
+    consequence equals $2,593
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern H2S and client_data.benefit_year = 2024
+    consequence equals $2,593
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern A2C and client_data.benefit_year = 2024
+    consequence equals $2,593
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern B2C and client_data.benefit_year = 2024
+    consequence equals $2,593
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern H2C and client_data.benefit_year = 2024
+    consequence equals $2,593
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern NHR and client_data.benefit_year = 2024
+    consequence equals $1,751
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern A1E and client_data.benefit_year = 2025
+    consequence equals $1,795
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern B1E and client_data.benefit_year = 2025
+    consequence equals $1,795
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern H1E and client_data.benefit_year = 2025
+    consequence equals $1,795
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern A2S and client_data.benefit_year = 2025
+    consequence equals $2,658
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern B2S and client_data.benefit_year = 2025
+    consequence equals $2,658
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern H2S and client_data.benefit_year = 2025
+    consequence equals $2,658
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern A2C and client_data.benefit_year = 2025
+    consequence equals $2,658
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern B2C and client_data.benefit_year = 2025
+    consequence equals $2,658
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern H2C and client_data.benefit_year = 2025
+    consequence equals $2,658
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern NHR and client_data.benefit_year = 2025
+    consequence equals $1,795
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern A1E and client_data.benefit_year = 2026
+    consequence equals $1,845
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern B1E and client_data.benefit_year = 2026
+    consequence equals $1,845
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern H1E and client_data.benefit_year = 2026
+    consequence equals $1,845
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern A2S and client_data.benefit_year = 2026
+    consequence equals $2,732
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern B2S and client_data.benefit_year = 2026
+    consequence equals $2,732
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern H2S and client_data.benefit_year = 2026
+    consequence equals $2,732
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern A2C and client_data.benefit_year = 2026
+    consequence equals $2,732
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern B2C and client_data.benefit_year = 2026
+    consequence equals $2,732
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern H2C and client_data.benefit_year = 2026
+    consequence equals $2,732
+
+scope EligibilityDecision:
+  definition income_limit
+    under condition client_data.household_type with pattern NHR and client_data.benefit_year = 2026
+    consequence equals $1,845
+
+```
+
+## Computed Values
+
+#### dol_avg_monthly_income
+
+DOL quarterly earnings divided by 3 to get average monthly income for comparison
+
+*Source: 523B — Reasonable Compatibility*
+
+```catala
+scope EligibilityDecision:
+  definition dol_avg_monthly_income equals
+    d_o_l_record.dol_quarterly_earnings / 3
+
+```
+
+#### is_compatible
+
+True when DOL-adjusted income is within 10% of client-adjusted income (reasonably compatible per 523B)
+
+*Source: 523B — Reasonable Compatibility*
+
+```catala
+scope EligibilityDecision:
+  definition is_compatible equals
+    (if dol_result.adjusted_earned_income - client_result.adjusted_earned_income >= $0 then dol_result.adjusted_earned_income - client_result.adjusted_earned_income else $0 - (dol_result.adjusted_earned_income - client_result.adjusted_earned_income)) <= client_result.adjusted_earned_income * 0.10
+
+```
+
+#### manual_verification_required
+
+True when manual verification is needed: either DOL data is unavailable (action 5), or client is within limit but DOL is above and NOT reasonably compatible (action 4 incompatible path)
+
+*Source: 523B — Reasonable Compatibility actions 4 and 5*
+
+```catala
+scope EligibilityDecision:
+  rule manual_verification_required under condition true
+    consequence not fulfilled
+
+scope EligibilityDecision:
+  exception
+  rule manual_verification_required
+    under condition
+      not d_o_l_record.dol_earned_income_available or (client_result.adjusted_earned_income <= income_limit and
+      dol_result.adjusted_earned_income > income_limit and
+      not is_compatible)
+    consequence fulfilled
+
+```
+
+## Rules
+
+#### AK-ELIG-DENY-001
+
+Deny when both client-stated and DOL-verified adjusted income exceed the income standard (523B action 2 — no compatibility check needed)
+
+*Source: 523B — Reasonable Compatibility action 2*
+
+```catala
+scope EligibilityDecision:
+  rule deny_rule_1_triggered under condition true
+    consequence not fulfilled
+
+scope EligibilityDecision:
+  exception
+  rule deny_rule_1_triggered
+    under condition
+      d_o_l_record.dol_earned_income_available and
+      client_result.adjusted_earned_income > income_limit and
+      dol_result.adjusted_earned_income > income_limit
+    consequence fulfilled
+
+```
+
+#### AK-ELIG-DENY-002
+
+Deny when client-stated income exceeds the standard but DOL income is at or below — accept client statement and deny without compatibility check (523B action 3)
+
+*Source: 523B — Reasonable Compatibility action 3*
+
+```catala
+scope EligibilityDecision:
+  rule deny_rule_2_triggered under condition true
+    consequence not fulfilled
+
+scope EligibilityDecision:
+  exception
+  rule deny_rule_2_triggered
+    under condition
+      d_o_l_record.dol_earned_income_available and
+      client_result.adjusted_earned_income > income_limit and
+      dol_result.adjusted_earned_income <= income_limit
+    consequence fulfilled
+
+```
+
+## Decision
+
+#### eligible
+
+Medicaid income eligibility result: approve if adjusted income at or below income standard; deny if above standard and not compatible with DOL; manual_verification if above standard but DOL income is compatible
+
+```catala
+scope EligibilityDecision:
+  definition eligible equals
+    if (number of reasons) > 0 then Deny
+    else if manual_verification_required then ManualVerification else Approve
+
+```
+
+```catala
+scope EligibilityDecision:
+  definition all_reason_entries equals
+    [ ReasonEntry { -- triggered: deny_rule_1_triggered -- code: IncomeExceedsStandardBoth }
+    ; ReasonEntry { -- triggered: deny_rule_2_triggered -- code: IncomeExceedsStandardClientOnly }
+    ]
+
+scope EligibilityDecision:
+  definition reasons equals
+    map each entry among
+      (list of e among all_reason_entries such that e.triggered)
+    to entry.code
+
+```
+
