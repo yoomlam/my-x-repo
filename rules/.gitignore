@@ -7,9 +7,8 @@ __pycache__/
 dist/
 .venv/
 
-.xlator.local.env
 xlator
-.plugin/
+.plugin
 
 # Virtual environments set up by demo scripts
 **/.venv/
