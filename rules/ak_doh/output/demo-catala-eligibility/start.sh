@@ -6,7 +6,10 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-CORE_CATALA_DIR="$(cd "$SCRIPT_DIR/../../../../core/catala" && pwd)"
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+source "$PROJECT_ROOT/.xlator.local.env"
+CORE_CATALA_DIR="$(cd "$CLAUDE_PLUGIN_ROOT/core/catala" && pwd)"
+echo "${CLAUDE_PLUGIN_DATA}"
 
 if [ ! -f "requirements.txt" ]; then
   cp -v "$CORE_CATALA_DIR/requirements.txt" .
@@ -25,4 +28,4 @@ PYTHON_PKG_DIR="$SCRIPT_DIR/python"
 export PYTHONPATH="$SCRIPT_DIR:$PYTHON_PKG_DIR${PYTHONPATH:+:$PYTHONPATH}"
 
 FASTAPI_PORT=8000
-exec uv run uvicorn main:app --host 0.0.0.0 --port "$FASTAPI_PORT" --reload
+# exec uv run uvicorn main:app --host 0.0.0.0 --port "$FASTAPI_PORT" --reload
