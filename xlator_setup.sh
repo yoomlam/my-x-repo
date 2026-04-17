@@ -33,34 +33,37 @@ mkdir -p "$PROJECT_ROOT/$DOMAINS_DIR"
 # and then switch to using CLAUDE_PLUGIN_DATA once it's available.
 UV_PROJECT_FILES="pyproject.toml .python-version uv.lock"
 
+DEFAULT_XLATOR_UV_BASEDIR="$PROJECT_ROOT/$DOMAINS_DIR/.xlator_uv"
 if [ "${CLAUDE_PLUGIN_DATA:-}" ]; then
     # This is specific to Claude
     # CLAUDE_PLUGIN_DATA is typically a subfolder under ~/.claude/plugins/data/...
     XLATOR_UV_BASEDIR="$CLAUDE_PLUGIN_DATA"
-    if [ -d "$PROJECT_ROOT/$DOMAINS_DIR/.venv" ]; then
-        rm -rf "$PROJECT_ROOT/$DOMAINS_DIR/.venv"
+
+    # Clean up .venv and uv project files from the default base directory
+    if [ -d "$DEFAULT_XLATOR_UV_BASEDIR/.venv" ]; then
+        rm -rf "$DEFAULT_XLATOR_UV_BASEDIR/.venv"
     fi
     for F in $UV_PROJECT_FILES; do
-        if [ -f "$PROJECT_ROOT/$DOMAINS_DIR/$F" ]; then
-            rm -f "$PROJECT_ROOT/$DOMAINS_DIR/$F"
-        fi
+        [ -f "$DEFAULT_XLATOR_UV_BASEDIR/$F" ] && rm -f "$DEFAULT_XLATOR_UV_BASEDIR/$F"
     done
+
+    # Create a symlink to the new uv base directory for tools (VS Code) looking at the default location
+    ln -snf "$XLATOR_UV_BASEDIR/.venv" "$DEFAULT_XLATOR_UV_BASEDIR/.venv"
 else
     # Source .xlator.local.env to preserve XLATOR_UV_BASEDIR and avoid unnecessary changes to it
     [ -f "$PROJECT_ROOT/.xlator.local.env" ] && source "$PROJECT_ROOT/.xlator.local.env"
-    if [ "$XLATOR_UV_BASEDIR" ] && [ -d "$XLATOR_UV_BASEDIR/.venv" ]; then
+    if [ "${XLATOR_UV_BASEDIR:-}" ] && [ -d "$XLATOR_UV_BASEDIR/.venv" ]; then
         echo "Using preset XLATOR_UV_BASEDIR from .xlator.local.env: $XLATOR_UV_BASEDIR"
     else
-        XLATOR_UV_BASEDIR="$PROJECT_ROOT/$DOMAINS_DIR/.xlator_uv"
+        XLATOR_UV_BASEDIR="$DEFAULT_XLATOR_UV_BASEDIR"
     fi
 fi
-
 
 # --- Helpers ---
 
 local_env_written_today() {
     local env_file="$PROJECT_ROOT/.xlator.local.env"
-    [ -f "$env_file" ] || echo "false"
+    [ -f "$env_file" ] || { echo "false"; return; }
     local ref
     ref=$(mktemp)
     trap 'rm -f "${ref:-}"' RETURN
@@ -72,7 +75,7 @@ local_env_written_today() {
     fi
 }
 
-copy_if_diff() {
+copy_from_plugin_if_diff() {
     local SRC_FILE="$1"  # relative to $CLAUDE_PLUGIN_ROOT
     local DST_FILE="$2"  # relative to current folder
     if [ -f "$DST_FILE" ] && cmp -s "$CLAUDE_PLUGIN_ROOT/$SRC_FILE" "$DST_FILE"; then
@@ -97,7 +100,7 @@ setup_xlator_plugin() {
     fi
 
     # Skip plugin install if .xlator.local.env was already written today
-    if [ "$SETUP_TODAY" = "true" ]; then
+    if [ "$SETUP_TODAY" = "true" ] && claude plugin list --json | grep -q '"xl@lockpicks-marketplace"'; then
         echo "  (Skipping Xlator plugin update since .xlator.local.env was already written today)"
     else
         # Fortunately, we don't need to authenticate claude to add plugins
@@ -177,7 +180,7 @@ setup_xlator_plugin
 echo "😊 2.a Creating files in $PROJECT_ROOT ..."
 cd "$PROJECT_ROOT"
 mkdir -p .vscode
-copy_if_diff "core/ruleset.schema.json" ".vscode/ruleset.schema.json"
+copy_from_plugin_if_diff "core/ruleset.schema.json" ".vscode/ruleset.schema.json"
 
 if [ ! -f ".gitignore" ] || ! grep -qxF ".xlator.local.env" ".gitignore"; then
     echo "Adding .xlator.local.env to .gitignore"
@@ -191,14 +194,13 @@ if [ ! -f ".gitignore" ] || ! grep -qxF ".xlator.local.env" ".gitignore"; then
     } >> ".gitignore"
 fi
 
-copy_if_diff .gitignore "$PROJECT_ROOT/$DOMAINS_DIR/.gitignore"
+copy_from_plugin_if_diff .gitignore "$PROJECT_ROOT/$DOMAINS_DIR/.gitignore"
 
 echo "😊 2.b Copying uv project files to $XLATOR_UV_BASEDIR ..."
 for F in $UV_PROJECT_FILES; do
-    copy_if_diff "$F" "$XLATOR_UV_BASEDIR/$F"
+    copy_from_plugin_if_diff "$F" "$XLATOR_UV_BASEDIR/$F"
 done
 
 setup_domains_dir
 
-git add .
 echo "🤩 Setup complete. Remember to commit updated files to git."
